@@ -101,6 +101,9 @@ locals {
         security_profile                     = workload_type
         iam_profile_key                      = workload_type
         image_channel                        = var.image_channel
+        private_ips                          = null
+        security_group_ids                   = []
+        iam_instance_profile_name            = null
       }
     ]
   ])
@@ -139,6 +142,9 @@ locals {
         metadata_http_put_response_hop_limit = group.metadata_http_put_response_hop_limit != null ? group.metadata_http_put_response_hop_limit : var.aws.metadata_http_put_response_hop_limit
         security_profile                     = group.security_profile
         iam_profile_key                      = group.iam_profile_key
+        private_ips                          = null
+        security_group_ids                   = []
+        iam_instance_profile_name            = null
       }
     ]
   ])
@@ -147,7 +153,38 @@ locals {
     for node in local.advanced_node_record_list : node.key => node
   }
 
-  combined_node_records = merge(local.workload_node_records, local.advanced_node_records)
+  explicit_node_records = {
+    for node_key, node in var.explicit_nodes : node_key => {
+      key                                  = node_key
+      workload_type                        = node.role
+      input_key                            = node_key
+      node_index                           = 0
+      node_number                          = 1
+      subnet_index                         = node.subnet_index != null ? node.subnet_index : 0
+      prefix                               = node_key
+      node_name                            = node.node_name != null ? node.node_name : node_key
+      fqdn                                 = node.fqdn != null ? node.fqdn : "${node.node_name != null ? node.node_name : node_key}.${var.domain_name}"
+      instance_type                        = node.instance_type
+      image_channel                        = node.image_channel != null ? node.image_channel : var.image_channel
+      image_id                             = node.image_id != null && trimspace(node.image_id) != "" ? trimspace(node.image_id) : (node.image_channel != null ? try(local.image_catalog.aws[node.image_channel][data.aws_region.current.region], "") : (trimspace(var.aws.image_id) != "" ? trimspace(var.aws.image_id) : lookup(var.aws.image_ids, data.aws_region.current.region, try(local.image_catalog.aws[var.image_channel][data.aws_region.current.region], ""))))
+      root_volume_gb                       = node.root_volume_gb
+      private_ips_per_eni                  = length(node.private_ips)
+      elastic_ips_per_node                 = var.deployment_mode == "public_cloud" ? node.elastic_ips_per_node : 0
+      node_start_offset                    = 0
+      role                                 = node.role
+      subnet_tier                          = node.subnet_tier
+      purchase_option                      = node.purchase_option != null ? node.purchase_option : var.aws.purchase_option
+      source_dest_check                    = node.source_dest_check
+      metadata_http_put_response_hop_limit = node.metadata_http_put_response_hop_limit != null ? node.metadata_http_put_response_hop_limit : var.aws.metadata_http_put_response_hop_limit
+      security_profile                     = node.security_profile
+      iam_profile_key                      = node.iam_profile_key
+      private_ips                          = node.private_ips
+      security_group_ids                   = node.security_group_ids
+      iam_instance_profile_name            = node.iam_instance_profile_name
+    }
+  }
+
+  combined_node_records = merge(local.workload_node_records, local.advanced_node_records, local.explicit_node_records)
 
   node_records = {
     for node_key, node in local.combined_node_records : node_key => merge(node, {
@@ -160,7 +197,10 @@ locals {
   ])
 
   advanced_iam_profile_keys = toset([
-    for _, group in var.node_groups : group.iam_profile_key
+    for profile_key in concat(
+      [for _, group in var.node_groups : group.iam_profile_key],
+      [for _, node in var.explicit_nodes : node.iam_profile_key if node.iam_profile_key != null]
+    ) : profile_key
   ])
 
   legacy_iam_profile_configs = {
@@ -183,7 +223,10 @@ locals {
   )
 
   advanced_security_profiles = toset([
-    for _, group in var.node_groups : group.security_profile
+    for profile in concat(
+      [for _, group in var.node_groups : group.security_profile],
+      [for _, node in var.explicit_nodes : node.security_profile if node.security_profile != null]
+    ) : profile
   ])
 
   node_network_interface_names = {

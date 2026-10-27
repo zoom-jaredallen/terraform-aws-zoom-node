@@ -33,9 +33,11 @@ resource "aws_vpc_security_group_egress_rule" "zoom_node" {
 }
 
 resource "aws_network_interface" "zoom_node" {
-  for_each          = var.node_records
-  subnet_id         = var.node_subnet_ids[each.key]
-  security_groups   = [aws_security_group.zoom_node[each.value.security_profile].id]
+  for_each  = var.node_records
+  subnet_id = var.node_subnet_ids[each.key]
+  security_groups = length(each.value.security_group_ids) > 0 ? each.value.security_group_ids : [
+    aws_security_group.zoom_node[each.value.security_profile].id
+  ]
   private_ips       = var.node_private_ips[each.key]
   source_dest_check = each.value.source_dest_check
   tags = merge(var.common_tags, {
@@ -62,11 +64,13 @@ resource "aws_cloudwatch_log_group" "zoom_node" {
 }
 
 resource "aws_instance" "zoom_node" {
-  for_each                    = var.node_records
-  ami                         = each.value.image_id
-  instance_type               = each.value.instance_type
-  key_name                    = var.key_name
-  iam_instance_profile        = var.iam_instance_profile_names[each.value.iam_profile_key]
+  for_each      = var.node_records
+  ami           = each.value.image_id
+  instance_type = each.value.instance_type
+  key_name      = var.key_name
+  iam_instance_profile = each.value.iam_instance_profile_name != null ? each.value.iam_instance_profile_name : (
+    each.value.iam_profile_key != null ? var.iam_instance_profile_names[each.value.iam_profile_key] : null
+  )
   user_data_base64            = base64encode(var.node_user_data[each.key])
   user_data_replace_on_change = false
   metadata_options {

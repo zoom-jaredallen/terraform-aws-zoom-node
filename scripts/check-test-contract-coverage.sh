@@ -27,6 +27,13 @@ required_runs=(
   plan_hybrid_recording_create_new_bucket
   plan_hybrid_recording_use_existing_bucket
   plan_advanced_s3_bucket_modes
+  plan_explicit_nodes_with_external_dependencies
+  reject_duplicate_explicit_node_key
+  reject_empty_explicit_private_ips
+  reject_explicit_ip_outside_subnet
+  reject_explicit_eips_without_private_ips
+  reject_mixed_explicit_security_ownership
+  reject_mixed_explicit_iam_ownership
 )
 
 missing_runs=()

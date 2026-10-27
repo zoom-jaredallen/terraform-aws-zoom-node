@@ -12,6 +12,8 @@ variable "node_records" {
     metadata_http_put_response_hop_limit = number
     security_profile                     = string
     iam_profile_key                      = string
+    security_group_ids                   = list(string)
+    iam_instance_profile_name            = string
   }))
 }
 variable "node_subnet_ids" { type = map(string) }

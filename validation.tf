@@ -41,8 +41,7 @@ locals {
 
   node_ip_allocations = flatten([
     for node_key, node in local.node_records : [
-      for ip_index in range(node.private_ips_per_eni) :
-      "${node.subnet_tier}:${node.subnet_index}:${node.node_start_offset + (node.node_index * max(10, node.private_ips_per_eni)) + ip_index}"
+      for ip in local.node_private_ips[node_key] : "${node.subnet_tier}:${node.subnet_index}:${ip}"
     ]
   ])
 
@@ -68,10 +67,61 @@ locals {
     )
   ])
 
-  colliding_node_keys = sort(tolist(setintersection(
-    toset(keys(local.workload_node_records)),
-    toset(keys(local.advanced_node_records))
-  )))
+  explicit_node_subnet_bounds = {
+    for node_key, _ in var.explicit_nodes : node_key => {
+      first = sum([
+        for octet_index, octet in split(".", cidrhost(local.node_subnet_cidrs[node_key], 0)) :
+        tonumber(octet) * pow(256, 3 - octet_index)
+      ])
+      last = sum([
+        for octet_index, octet in split(".", cidrhost(local.node_subnet_cidrs[node_key], -1)) :
+        tonumber(octet) * pow(256, 3 - octet_index)
+      ])
+    }
+  }
+
+  explicit_node_validation_errors = flatten([
+    for node_key, node in var.explicit_nodes : concat(
+      trimspace(node_key) == "" ? ["explicit_nodes keys must not be empty."] : [],
+      node.root_volume_gb <= 0 ? ["explicit_nodes.${node_key}.root_volume_gb must be greater than zero."] : [],
+      length(node.private_ips) == 0 ? ["explicit_nodes.${node_key}.private_ips must not be empty."] : [],
+      node.elastic_ips_per_node > length(node.private_ips) ? ["explicit_nodes.${node_key}.elastic_ips_per_node cannot exceed the number of private_ips."] : [],
+      node.metadata_http_put_response_hop_limit != null && (node.metadata_http_put_response_hop_limit < 1 || node.metadata_http_put_response_hop_limit > 64) ? ["explicit_nodes.${node_key}.metadata_http_put_response_hop_limit must be between 1 and 64."] : [],
+      !contains(["public", "private"], node.subnet_tier) ? ["explicit_nodes.${node_key}.subnet_tier must be public or private."] : [],
+      node.subnet_index != null && (node.subnet_index < 0 || floor(node.subnet_index) != node.subnet_index) ? ["explicit_nodes.${node_key}.subnet_index must be a non-negative integer."] : [],
+      node.purchase_option != null && !contains(["on_demand", "spot"], node.purchase_option) ? ["explicit_nodes.${node_key}.purchase_option must be on_demand or spot."] : [],
+      node.image_channel != null && !contains(["prod", "dev"], node.image_channel) ? ["explicit_nodes.${node_key}.image_channel must be prod or dev."] : [],
+      node.image_id != null && trimspace(node.image_id) != "" && !can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(node.image_id))) ? ["explicit_nodes.${node_key}.image_id is not a valid AMI ID."] : [],
+      node.security_profile == null && length(node.security_group_ids) == 0 ? ["explicit_nodes.${node_key} requires security_profile or security_group_ids."] : [],
+      node.security_profile != null && length(node.security_group_ids) > 0 ? ["explicit_nodes.${node_key} cannot set both security_profile and security_group_ids."] : [],
+      node.security_profile != null && !contains(local.supported_advanced_security_profiles, node.security_profile) ? ["explicit_nodes.${node_key}.security_profile is not supported."] : [],
+      node.iam_profile_key != null && node.iam_instance_profile_name != null ? ["explicit_nodes.${node_key} cannot set both iam_profile_key and iam_instance_profile_name."] : [],
+      [
+        for ip in node.private_ips : "explicit_nodes.${node_key} private IP ${ip} is outside the selected subnet."
+        if !try(
+          sum([
+            for octet_index, octet in split(".", ip) :
+            tonumber(octet) * pow(256, 3 - octet_index)
+          ]) >= local.explicit_node_subnet_bounds[node_key].first &&
+          sum([
+            for octet_index, octet in split(".", ip) :
+            tonumber(octet) * pow(256, 3 - octet_index)
+          ]) <= local.explicit_node_subnet_bounds[node_key].last,
+          false
+        )
+      ]
+    )
+  ])
+
+  all_declared_node_keys = concat(
+    keys(local.workload_node_records),
+    keys(local.advanced_node_records),
+    keys(local.explicit_node_records)
+  )
+  colliding_node_keys = sort(distinct([
+    for node_key in local.all_declared_node_keys : node_key
+    if length([for candidate in local.all_declared_node_keys : candidate if candidate == node_key]) > 1
+  ]))
 
   capacity_validation_errors = [
     for workload_type, workload in local.enabled_workloads :
@@ -90,9 +140,9 @@ locals {
     if cidr == "0.0.0.0/0"
   ]
 
-  required_elastic_ips = sum([
+  required_elastic_ips = sum(concat([0], [
     for _, node in local.node_records : node.elastic_ips_per_node
-  ]) + (var.aws.create_nat_gateway ? 1 : 0)
+  ])) + (var.aws.create_nat_gateway ? 1 : 0)
   current_elastic_ips = length(data.aws_eips.current.public_ips)
   eip_quota           = floor(data.aws_servicequotas_service_quota.ec2_elastic_ips.value)
 
@@ -159,7 +209,7 @@ locals {
       if trimspace(node.image_id) == ""
     ],
     length(local.colliding_node_keys) > 0 ? [
-      "node group keys collide with generated workload keys: ${join(", ", local.colliding_node_keys)}."
+      "workload, node group, and explicit node keys must be unique: ${join(", ", local.colliding_node_keys)}."
     ] : [],
     length(local.unknown_node_image_keys) > 0 ? [
       "node_image_ids contains unknown node keys: ${join(", ", local.unknown_node_image_keys)}."
@@ -195,7 +245,7 @@ locals {
       "network_mode=use_existing requires enough aws.existing_subnet_ids for availability_zone_config and explicit node group subnet indexes."
     ] : [],
     var.network_mode != "create_new" && local.requires_private_subnets ? [
-      "private node groups require network_mode=create_new."
+      "private nodes require network_mode=create_new."
     ] : [],
     var.aws.create_nat_gateway && !local.requires_private_subnets ? [
       "aws.create_nat_gateway requires at least one private node group."
@@ -243,6 +293,7 @@ locals {
     local.ip_validation_errors,
     local.advanced_node_group_validation_errors,
     local.advanced_ip_range_validation_errors,
+    local.explicit_node_validation_errors,
     local.invalid_s3_bucket_access,
     local.network_interface_validation_errors,
     local.instance_type_validation_errors,

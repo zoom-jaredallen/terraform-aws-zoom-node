@@ -66,6 +66,24 @@ The published root module is a compatibility facade over three private, flat imp
 
 Use `node_groups` for infrastructure roles or heterogeneous lab topologies that do not belong in the Zoom workload capacity catalog. Groups normalize into the same EC2, ENI, Cloud Init, EIP, and output path as `workloads`. Their `subnet_tier` selects a public or private subnet, and groups with the same `iam_profile_key` share one IAM role and instance profile.
 
+Use `explicit_nodes` when adopting an existing deployment or when each appliance must retain an exact Terraform key, hostname, private-IP list, security-group attachment, or IAM instance profile. Explicit nodes share the normal EC2, ENI, Cloud Init, EIP, logging, and output paths, but they do not derive identities or addresses from counts and offsets. A node may select either a module-managed `security_profile` or external `security_group_ids`, and either a module-managed `iam_profile_key` or external `iam_instance_profile_name`; mixing ownership for the same node is rejected.
+
+```hcl
+explicit_nodes = {
+  jp01worker1-ap-northeast-1a = {
+    fqdn                      = "jp01worker1-ap-northeast-1a"
+    role                      = "ai_services"
+    instance_type             = "g6.12xlarge"
+    image_id                  = "ami-0123456789abcdef0"
+    root_volume_gb            = 500
+    private_ips               = ["10.2.101.241"]
+    subnet_tier               = "public"
+    security_group_ids        = ["sg-0123456789abcdef0"]
+    iam_instance_profile_name = "ZoomNodeS3Access"
+  }
+}
+```
+
 An advanced group can set `subnet_index` to select a specific zero-based subnet and Availability Zone within its tier. Omitting it preserves the existing single-AZ or round-robin placement behavior. When a higher index is selected with `network_mode = "create_new"`, the module expands only that subnet tier, so existing groups retain their current subnet indexes and are not redistributed.
 
 Set `aws.create_nat_gateway = true` when private groups need outbound access. The module creates one NAT Gateway in the first public subnet and routes private-subnet IPv4 traffic through it. Use `aws.s3_bucket_access` to create or reference named buckets and grant bucket-scoped actions to selected IAM profile keys.
@@ -211,6 +229,7 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | domain\_name | DNS domain appended to generated Zoom Node hostnames. | `string` | n/a | yes |
 | enable\_least\_privilege\_egress | Deprecated compatibility input. When true, standard workloads use workload\_specific egress unless aws.security\_group\_egress\_profiles sets an explicit profile. | `bool` | `false` | no |
 | environment\_name | Optional environment prefix for node names. | `string` | `""` | no |
+| explicit\_nodes | Exact Zoom Node inventory keyed by stable Terraform node identity. Use for adopting existing nodes or preserving exact hostnames and private IPs. | <pre>map(object({<br/>    node_name                            = optional(string, null)<br/>    fqdn                                 = optional(string, null)<br/>    role                                 = string<br/>    instance_type                        = string<br/>    image_channel                        = optional(string, null)<br/>    image_id                             = optional(string, null)<br/>    root_volume_gb                       = number<br/>    private_ips                          = list(string)<br/>    elastic_ips_per_node                 = optional(number, 0)<br/>    subnet_tier                          = string<br/>    subnet_index                         = optional(number, null)<br/>    purchase_option                      = optional(string, null)<br/>    source_dest_check                    = optional(bool, true)<br/>    metadata_http_put_response_hop_limit = optional(number, null)<br/>    security_profile                     = optional(string, null)<br/>    security_group_ids                   = optional(list(string), [])<br/>    iam_profile_key                      = optional(string, null)<br/>    iam_instance_profile_name            = optional(string, null)<br/>  }))</pre> | `{}` | no |
 | generate\_node\_password | Generate a compliant 16-character Zoom Node password instead of accepting node\_password. | `bool` | `false` | no |
 | hybrid\_recording\_s3\_bucket\_mode | Use create\_new to create the Hybrid Recording bucket or use\_existing to grant access to an existing bucket. | `string` | `"use_existing"` | no |
 | hybrid\_recording\_s3\_bucket\_name | S3 bucket name used by Hybrid Recording. Required when Hybrid Recording is enabled. | `string` | `""` | no |

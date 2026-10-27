@@ -13,6 +13,7 @@ output "instances" {
     for key, instance in aws_instance.zoom_node : key => {
       ami                                  = instance.ami
       instance_type                        = instance.instance_type
+      iam_instance_profile                 = instance.iam_instance_profile
       user_data_base64                     = instance.user_data_base64
       metadata_http_tokens                 = one(instance.metadata_options).http_tokens
       metadata_http_put_response_hop_limit = one(instance.metadata_options).http_put_response_hop_limit
@@ -24,7 +25,7 @@ output "instances" {
 }
 output "network_interfaces" {
   value = { for key, eni in aws_network_interface.zoom_node : key => {
-    subnet_id = eni.subnet_id, private_ips = eni.private_ips, source_dest_check = eni.source_dest_check
+    subnet_id = eni.subnet_id, private_ips = eni.private_ips, source_dest_check = eni.source_dest_check, security_groups = eni.security_groups
   } }
 }
 output "log_groups" { value = { for key, group in aws_cloudwatch_log_group.zoom_node : key => { retention_in_days = group.retention_in_days, kms_key_id = group.kms_key_id } } }

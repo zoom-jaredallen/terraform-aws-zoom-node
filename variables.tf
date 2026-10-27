@@ -197,6 +197,31 @@ variable "node_groups" {
   default = {}
 }
 
+variable "explicit_nodes" {
+  description = "Exact Zoom Node inventory keyed by stable Terraform node identity. Use for adopting existing nodes or preserving exact hostnames and private IPs."
+  type = map(object({
+    node_name                            = optional(string, null)
+    fqdn                                 = optional(string, null)
+    role                                 = string
+    instance_type                        = string
+    image_channel                        = optional(string, null)
+    image_id                             = optional(string, null)
+    root_volume_gb                       = number
+    private_ips                          = list(string)
+    elastic_ips_per_node                 = optional(number, 0)
+    subnet_tier                          = string
+    subnet_index                         = optional(number, null)
+    purchase_option                      = optional(string, null)
+    source_dest_check                    = optional(bool, true)
+    metadata_http_put_response_hop_limit = optional(number, null)
+    security_profile                     = optional(string, null)
+    security_group_ids                   = optional(list(string), [])
+    iam_profile_key                      = optional(string, null)
+    iam_instance_profile_name            = optional(string, null)
+  }))
+  default = {}
+}
+
 variable "source_cidrs" {
   description = "Provider-neutral source CIDRs for workload traffic."
   type = object({

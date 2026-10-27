@@ -1,10 +1,16 @@
 locals {
   create_new_network = var.network_mode == "create_new"
 
-  explicit_public_subnet_indices  = [for _, group in var.node_groups : group.subnet_index if group.subnet_tier == "public" && group.subnet_index != null]
-  explicit_private_subnet_indices = [for _, group in var.node_groups : group.subnet_index if group.subnet_tier == "private" && group.subnet_index != null]
-  requires_public_subnets         = length(local.enabled_workloads) > 0 || anytrue([for _, group in var.node_groups : group.subnet_tier == "public"])
-  requires_private_subnets        = anytrue([for _, group in var.node_groups : group.subnet_tier == "private"])
+  explicit_public_subnet_indices = concat(
+    [for _, group in var.node_groups : group.subnet_index if group.subnet_tier == "public" && group.subnet_index != null],
+    [for _, node in var.explicit_nodes : node.subnet_index if node.subnet_tier == "public" && node.subnet_index != null]
+  )
+  explicit_private_subnet_indices = concat(
+    [for _, group in var.node_groups : group.subnet_index if group.subnet_tier == "private" && group.subnet_index != null],
+    [for _, node in var.explicit_nodes : node.subnet_index if node.subnet_tier == "private" && node.subnet_index != null]
+  )
+  requires_public_subnets  = length(local.enabled_workloads) > 0 || anytrue([for _, group in var.node_groups : group.subnet_tier == "public"]) || anytrue([for _, node in var.explicit_nodes : node.subnet_tier == "public"])
+  requires_private_subnets = anytrue([for _, group in var.node_groups : group.subnet_tier == "private"]) || anytrue([for _, node in var.explicit_nodes : node.subnet_tier == "private"])
   requested_public_subnet_count = max(concat(
     [local.subnet_count, length(var.aws.public_subnet_cidrs)],
     [for subnet_index in local.explicit_public_subnet_indices : subnet_index + 1]

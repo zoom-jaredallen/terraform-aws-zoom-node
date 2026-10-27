@@ -16,10 +16,12 @@ locals {
   }
 
   node_private_ips = {
-    for node_key, node in local.node_records : node_key => [
-      for ip_index in range(node.private_ips_per_eni) :
-      cidrhost(local.node_subnet_cidrs[node_key], node.node_start_offset + (node.node_index * max(10, node.private_ips_per_eni)) + ip_index)
-    ]
+    for node_key, node in local.node_records : node_key => (
+      node.private_ips != null ? node.private_ips : [
+        for ip_index in range(node.private_ips_per_eni) :
+        cidrhost(local.node_subnet_cidrs[node_key], node.node_start_offset + (node.node_index * max(10, node.private_ips_per_eni)) + ip_index)
+      ]
+    )
   }
 
   node_user_data = {
@@ -36,7 +38,7 @@ locals {
 
   node_eip_record_list = flatten([
     for node_key, node in local.node_records : [
-      for eip_index in range(node.elastic_ips_per_node) : {
+      for eip_index in range(min(node.elastic_ips_per_node, length(local.node_private_ips[node_key]))) : {
         key        = "${node_key}-eip-${eip_index}"
         node_key   = node_key
         eip_index  = eip_index
