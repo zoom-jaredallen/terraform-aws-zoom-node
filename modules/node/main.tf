@@ -46,7 +46,7 @@ resource "aws_network_interface" "zoom_node" {
     ZoomNodeIndex = format("%02d", each.value.node_number)
     ZoomNodeName  = each.value.node_name
   })
-  lifecycle { ignore_changes = [private_ips] }
+  lifecycle { ignore_changes = [private_ips, private_ip_list, private_ip_list_enabled] }
   depends_on = [aws_vpc_security_group_ingress_rule.zoom_node, aws_vpc_security_group_egress_rule.zoom_node]
 }
 

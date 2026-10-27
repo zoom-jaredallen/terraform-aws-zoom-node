@@ -51,4 +51,11 @@ for move in "${required_moves[@]}"; do
   }
 done
 
+for ignored_attribute in private_ips private_ip_list private_ip_list_enabled; do
+  rg -q "ignore_changes = \[[^]]*${ignored_attribute}" modules/node/main.tf || {
+    echo "Node ENI lifecycle must preserve legacy ${ignored_attribute} state during adoption." >&2
+    exit 1
+  }
+done
+
 echo "Module extraction contract passed."

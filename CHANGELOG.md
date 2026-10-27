@@ -4,6 +4,12 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-27
+
+### Fixed
+
+- Preserve legacy AWS provider private-IP list mode while adopting existing ENIs into `explicit_nodes`, preventing a migration-only ENI configuration update.
+
 ## [0.2.0] - 2026-10-27
 
 ### Added
