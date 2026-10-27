@@ -4,7 +4,7 @@ Contributions are welcome through GitHub issues and pull requests.
 
 ## Development
 
-Install Terraform, terraform-docs, TFLint with the AWS ruleset, and Trivy. Then run:
+Install Terraform, terraform-docs `v0.24.0`, TFLint with the AWS ruleset, and Trivy. Then run:
 
 ```bash
 ./scripts/check-repository.sh

@@ -23,11 +23,16 @@ jobs:
           terraform_version: "1.16.0"
 
       - name: Set up terraform-docs
-        uses: terraform-docs/gh-actions@v1.4.1
-        with:
-          working-dir: .
-          config-file: .terraform-docs.yml
-          fail-on-diff: true
+        env:
+          TERRAFORM_DOCS_VERSION: "0.24.0"
+        run: |
+          archive="terraform-docs-v${TERRAFORM_DOCS_VERSION}-linux-amd64.tar.gz"
+          curl --fail --location --silent --show-error --output "$archive" \
+            "https://github.com/terraform-docs/terraform-docs/releases/download/v${TERRAFORM_DOCS_VERSION}/${archive}"
+          curl --fail --location --silent --show-error --output checksums.txt \
+            "https://github.com/terraform-docs/terraform-docs/releases/download/v${TERRAFORM_DOCS_VERSION}/terraform-docs-v${TERRAFORM_DOCS_VERSION}.sha256sum"
+          grep " ${archive}$" checksums.txt | sha256sum --check
+          sudo tar --extract --gzip --file "$archive" --directory /usr/local/bin terraform-docs
 
       - name: Set up TFLint
         uses: terraform-linters/setup-tflint@v6.2.2
@@ -36,6 +41,9 @@ jobs:
 
       - name: Terraform format
         run: terraform fmt -check -recursive .
+
+      - name: Check generated module documentation
+        run: terraform-docs --config .terraform-docs.yml --output-check .
 
       - name: Initialize TFLint
         run: tflint --config="$(pwd)/.tflint.hcl" --init
