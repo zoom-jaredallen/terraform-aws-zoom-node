@@ -2,7 +2,7 @@ module "zoom_node" {
   source = "../.."
 
   environment_name       = "demo"
-  domain_name            = "lab.zoomdemos.com"
+  domain_name            = "lab.example.com"
   deployment_mode        = "public_cloud"
   network_mode           = "use_existing"
   registration_code      = var.registration_code
@@ -11,7 +11,7 @@ module "zoom_node" {
   source_cidrs = {
     zoom_clients        = ["0.0.0.0/0"]
     zoom_cloud          = ["0.0.0.0/0"]
-    remote_management_1 = ["38.99.100.7/32"]
+    remote_management_1 = ["203.0.113.10/32"]
     remote_management_2 = []
     internal_traffic    = ["10.0.0.0/16"]
     nfs                 = ["10.10.0.0/16"]
@@ -35,13 +35,13 @@ module "zoom_node" {
     instance_tags = {
       PatchGroup  = "Linux"
       appliance   = "true"
-      cost_center = "solution_engineering"
+      cost_center = "infrastructure"
     }
   }
 
   tags = {
-    Owner       = "solution-engineering"
-    CostCenter  = "solution_engineering"
+    Owner       = "platform-engineering"
+    CostCenter  = "infrastructure"
     Environment = "Demo"
   }
 }

@@ -81,7 +81,7 @@ module "zoom_node" {
   version = "~> 0.1"
 
   environment_name  = "demo"
-  domain_name       = "lab.zoomdemos.com"
+  domain_name       = "lab.example.com"
   deployment_mode   = "public_cloud"
   network_mode      = "create_new"
   registration_code = var.registration_code
@@ -90,7 +90,7 @@ module "zoom_node" {
   source_cidrs = {
     zoom_clients        = ["0.0.0.0/0"]
     zoom_cloud          = ["0.0.0.0/0"]
-    remote_management_1 = ["38.99.100.7/32"]
+    remote_management_1 = ["203.0.113.10/32"]
     internal_traffic    = ["10.0.0.0/16"]
     nfs                 = ["10.10.0.0/16"]
   }
