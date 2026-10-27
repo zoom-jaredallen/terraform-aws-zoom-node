@@ -4,6 +4,12 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+### Fixed
+
+- Use the immutable GitHub release tag in consumer examples while Terraform Registry publication is disabled.
+- Correct standalone repository paths in the example instructions.
+- Remove duplicated AMI overrides from the smoke example so it exercises the shared image catalog.
+
 ## [0.1.0] - 2026-10-27
 
 ### Added

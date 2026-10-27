@@ -9,8 +9,7 @@ An AWS-native Terraform module for deploying Zoom Node workloads.
 
 ```hcl
 module "zoom_node" {
-  source  = "zoom-jaredallen/zoom-node/aws"
-  version = "~> 0.1"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.1.0"
 
   environment_name       = "demo"
   domain_name            = "lab.example.com"
@@ -77,8 +76,7 @@ Customer-managed KMS key inputs reference externally managed keys. The caller is
 
 ```hcl
 module "zoom_node" {
-  source  = "zoom-jaredallen/zoom-node/aws"
-  version = "~> 0.1"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.1.0"
 
   environment_name  = "demo"
   domain_name       = "lab.example.com"

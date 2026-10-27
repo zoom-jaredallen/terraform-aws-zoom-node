@@ -11,6 +11,9 @@ git push origin main vX.Y.Z
 ```
 
 5. Create matching GitHub release notes.
-6. Confirm the Terraform Registry has synchronized the new version.
+6. Confirm consumers can resolve the immutable GitHub tag.
+7. If Terraform Registry publication is enabled, confirm the Registry has synchronized the new version.
 
-Do not remove published Registry versions except to address a critical security or legal issue.
+GitHub releases are currently the module's distribution mechanism. Terraform Registry publication is optional and must be explicitly enabled before adding Registry source examples to the documentation.
+
+Do not remove published GitHub releases or Registry versions except to address a critical security or legal issue.

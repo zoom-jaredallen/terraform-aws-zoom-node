@@ -7,7 +7,7 @@ Running this example creates cost-bearing EC2 instances, EBS volumes, Elastic IP
 ## Use
 
 ```bash
-cd terraform/examples/aws-existing-vpc
+cd examples/aws-existing-vpc
 cp terraform.tfvars.example local.auto.tfvars
 # Replace the registration code, VPC ID, and subnet ID placeholders.
 

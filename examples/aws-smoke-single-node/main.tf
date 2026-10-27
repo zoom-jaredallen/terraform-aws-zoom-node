@@ -26,10 +26,6 @@ module "zoom_node" {
   }
 
   aws = {
-    image_ids = {
-      us-west-2      = "ami-0d693e77e13176e99"
-      ap-southeast-2 = "ami-04134426b33d94976"
-    }
     vpc_cidr           = "10.0.0.0/16"
     availability_zones = ["us-west-2a"]
     instance_tags = {

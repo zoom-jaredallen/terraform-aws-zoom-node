@@ -7,7 +7,7 @@ Running it creates cost-bearing EC2, EBS, Elastic IP, CloudWatch, IAM, security-
 ## Use
 
 ```bash
-cd terraform/examples/aws-smoke-single-node
+cd examples/aws-smoke-single-node
 cp terraform.tfvars.example local.auto.tfvars
 # Replace the registration code placeholder and optionally select aws_region.
 
