@@ -4,6 +4,8 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-27
+
 ### Added
 
 - Split AWS resource ownership into private `network`, `node`, and `storage-access` implementation modules while retaining the root module as a compatible facade.
