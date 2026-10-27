@@ -46,6 +46,8 @@ variables {
 run "plan_hybrid_recording_create_new_bucket" {
   command = plan
 
+  expect_failures = [check.deprecated_hybrid_recording_s3_inputs]
+
   variables {
     workloads = {
       hybrid_recording = {
@@ -73,6 +75,8 @@ run "plan_hybrid_recording_create_new_bucket" {
 
 run "plan_hybrid_recording_use_existing_bucket" {
   command = plan
+
+  expect_failures = [check.deprecated_hybrid_recording_s3_inputs]
 
   variables {
     workloads = {

@@ -34,6 +34,13 @@ required_runs=(
   reject_explicit_eips_without_private_ips
   reject_mixed_explicit_security_ownership
   reject_mixed_explicit_iam_ownership
+  plan_generic_hybrid_recording_s3_access
+  reject_conflicting_hybrid_recording_s3_inputs
+  warn_deprecated_enable_least_privilege_egress
+  warn_deprecated_subnet_cidrs
+  warn_deprecated_instance_family_nic_map
+  warn_deprecated_public_ipv4_on_boot
+  warn_deprecated_hybrid_recording_s3_inputs
 )
 
 missing_runs=()

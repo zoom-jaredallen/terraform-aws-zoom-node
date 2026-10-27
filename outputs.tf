@@ -102,6 +102,6 @@ output "s3_bucket_names" {
 }
 
 output "hybrid_recording_s3_bucket_name" {
-  description = "Hybrid Recording S3 bucket name, when configured."
-  value       = var.hybrid_recording_s3_bucket_name
+  description = "Deprecated compatibility output. Use s3_bucket_names[\"hybrid_recording\"]."
+  value       = local.generic_hybrid_recording_s3_configured ? var.aws.s3_bucket_access["hybrid_recording"].bucket_name : var.hybrid_recording_s3_bucket_name
 }

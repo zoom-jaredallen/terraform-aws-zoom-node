@@ -33,12 +33,16 @@ module "zoom_node" {
     }
   }
 
-  hybrid_recording_s3_bucket_name = "demo-lab-zoom-node-recordings"
-  hybrid_recording_s3_bucket_mode = "create_new"
-
   aws = {
     vpc_cidr           = "10.0.0.0/16"
     availability_zones = ["us-west-2a"]
+    s3_bucket_access = {
+      hybrid_recording = {
+        bucket_name      = "demo-lab-zoom-node-recordings"
+        mode             = "create_new"
+        iam_profile_keys = ["HybridRecording"]
+      }
+    }
     instance_tags = {
       PatchGroup  = "Linux"
       appliance   = "true"

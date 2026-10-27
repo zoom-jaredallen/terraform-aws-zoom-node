@@ -1,5 +1,8 @@
 locals {
-  hybrid_recording_enabled = contains(keys(local.enabled_workloads), "HybridRecording")
+  hybrid_recording_enabled                  = contains(keys(local.enabled_workloads), "HybridRecording")
+  generic_hybrid_recording_s3_configured    = contains(keys(var.aws.s3_bucket_access), "hybrid_recording")
+  dedicated_hybrid_recording_s3_configured  = trimspace(var.hybrid_recording_s3_bucket_name) != ""
+  dedicated_hybrid_recording_storage_active = local.hybrid_recording_enabled && local.dedicated_hybrid_recording_s3_configured
   managed_node_group_s3_buckets = {
     for access_key, access in var.aws.s3_bucket_access : access_key => access
     if access.mode == "create_new"

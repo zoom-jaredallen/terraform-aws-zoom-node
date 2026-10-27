@@ -136,6 +136,8 @@ run "plan_catalog_nic_mappings" {
 run "plan_nic_mapping_overrides" {
   command = plan
 
+  expect_failures = [check.deprecated_instance_family_nic_map]
+
   variables {
     node_groups = {
       exact = {

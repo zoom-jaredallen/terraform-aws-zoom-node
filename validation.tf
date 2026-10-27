@@ -274,8 +274,14 @@ locals {
     !contains(local.supported_cloudwatch_log_retention_days, var.aws.cloudwatch_log_retention_days) ? [
       "aws.cloudwatch_log_retention_days must be a supported CloudWatch Logs retention value."
     ] : [],
-    local.hybrid_recording_enabled && trimspace(var.hybrid_recording_s3_bucket_name) == "" ? [
-      "Hybrid Recording requires hybrid_recording_s3_bucket_name."
+    local.hybrid_recording_enabled && !local.dedicated_hybrid_recording_s3_configured && !local.generic_hybrid_recording_s3_configured ? [
+      "Hybrid Recording requires aws.s3_bucket_access[\"hybrid_recording\"] or the deprecated hybrid_recording_s3_bucket_name."
+    ] : [],
+    local.dedicated_hybrid_recording_s3_configured && local.generic_hybrid_recording_s3_configured ? [
+      "Configure Hybrid Recording storage with either aws.s3_bucket_access[\"hybrid_recording\"] or the deprecated dedicated inputs, not both."
+    ] : [],
+    local.generic_hybrid_recording_s3_configured && !try(contains(var.aws.s3_bucket_access["hybrid_recording"].iam_profile_keys, "HybridRecording"), false) ? [
+      "aws.s3_bucket_access[\"hybrid_recording\"].iam_profile_keys must include HybridRecording."
     ] : [],
     length(var.aws.hybrid_recording_s3_actions) == 0 ? [
       "aws.hybrid_recording_s3_actions must not be empty."

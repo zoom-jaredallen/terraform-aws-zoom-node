@@ -203,7 +203,7 @@ locals {
     ) : profile_key
   ])
 
-  legacy_iam_profile_configs = {
+  workload_iam_profile_configs = {
     for workload_type, workload in local.enabled_workloads : workload_type => {
       prefix = workload.prefix
       label  = workload_type
@@ -218,7 +218,7 @@ locals {
   }
 
   iam_profile_configs = merge(
-    local.legacy_iam_profile_configs,
+    local.workload_iam_profile_configs,
     local.advanced_iam_profile_configs
   )
 

@@ -42,8 +42,6 @@ variables {
     remote_management_1 = ["192.0.2.10/32"]
   }
 
-  hybrid_recording_s3_bucket_name = "zoom-node-contract-existing-recordings"
-
   aws = {
     availability_zones = ["us-west-2a"]
   }
@@ -85,6 +83,16 @@ run "plan_hybrid_recording_workload" {
       hybrid_recording = {
         enabled  = true
         capacity = 30
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+      s3_bucket_access = {
+        hybrid_recording = {
+          bucket_name      = "zoom-node-contract-existing-recordings"
+          mode             = "use_existing"
+          iam_profile_keys = ["HybridRecording"]
+        }
       }
     }
   }

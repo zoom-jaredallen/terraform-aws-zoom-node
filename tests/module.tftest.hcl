@@ -184,6 +184,8 @@ run "plan_workload_specific_egress" {
 run "plan_legacy_least_privilege_egress" {
   command = plan
 
+  expect_failures = [check.deprecated_enable_least_privilege_egress]
+
   variables {
     enable_least_privilege_egress = true
   }
@@ -212,6 +214,8 @@ run "reject_invalid_egress_profile" {
 
 run "plan_storage_and_encryption_hardening" {
   command = plan
+
+  expect_failures = [check.deprecated_hybrid_recording_s3_inputs]
 
   variables {
     workloads = {

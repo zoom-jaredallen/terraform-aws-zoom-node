@@ -13,6 +13,21 @@ The following are compatibility guarantees within a major release:
 
 Always read `CHANGELOG.md`, back up remote state, run `terraform init -upgrade`, and review a saved plan before applying a module upgrade.
 
+## v0.2 deprecation period
+
+The `v0.2.x` line keeps the following compatibility inputs functional while emitting non-blocking Terraform check warnings. Migrate maintained configurations before upgrading to `v1.0.0`.
+
+| Deprecated configuration | Replacement |
+|---|---|
+| `enable_least_privilege_egress` | `aws.security_group_egress_profiles` |
+| `aws.subnet_cidrs` | `aws.public_subnet_cidrs` |
+| `aws.network_interface_names_by_instance_family` | `instance-catalog.json` or `aws.network_interface_names_by_instance_type` |
+| `aws.enable_public_ipv4_on_boot` | Remove it; Zoom Nodes use explicit ENIs and Elastic IP associations |
+| Dedicated `hybrid_recording_s3_*` inputs | `aws.s3_bucket_access["hybrid_recording"]` with `iam_profile_keys = ["HybridRecording"]` |
+| `hybrid_recording_s3_bucket_name` output | `s3_bucket_names["hybrid_recording"]` |
+
+Do not set both the generic and dedicated Hybrid Recording storage inputs. The module rejects ambiguous ownership rather than selecting one silently. Existing dedicated resources retain their historical Terraform addresses during the warning period; migrating their resource state to generic addresses is a separate, reviewed state operation.
+
 ## Standalone security-group rules
 
 The module now manages rules with standalone security-group rules instead of inline blocks on `aws_security_group.zoom_node`. The security groups retain their existing state addresses and EC2 attachments.

@@ -88,6 +88,22 @@ An advanced group can set `subnet_index` to select a specific zero-based subnet 
 
 Set `aws.create_nat_gateway = true` when private groups need outbound access. The module creates one NAT Gateway in the first public subnet and routes private-subnet IPv4 traffic through it. Use `aws.s3_bucket_access` to create or reference named buckets and grant bucket-scoped actions to selected IAM profile keys.
 
+Hybrid Recording storage uses the same generic interface. Use the stable `hybrid_recording` access key and target the workload's `HybridRecording` IAM profile:
+
+```hcl
+aws = {
+  s3_bucket_access = {
+    hybrid_recording = {
+      bucket_name      = "example-zoom-node-recordings"
+      mode             = "create_new"
+      iam_profile_keys = ["HybridRecording"]
+    }
+  }
+}
+```
+
+The compatibility inputs `enable_least_privilege_egress`, `aws.subnet_cidrs`, `aws.network_interface_names_by_instance_family`, `aws.enable_public_ipv4_on_boot`, and the dedicated `hybrid_recording_s3_*` settings are deprecated for removal in `v1.0.0`. They remain functional in the `v0.x` line and emit Terraform check warnings with direct replacement guidance. Do not configure both generic and dedicated Hybrid Recording storage.
+
 Set `aws.security_group_egress_profiles` by workload or advanced security-profile key to choose `allow_all`, `workload_specific`, or `deny_all`. Existing configurations keep unrestricted egress by default. `enable_least_privilege_egress` is deprecated but remains supported for compatibility.
 
 Customer-managed KMS key inputs reference externally managed keys. The caller is responsible for key policies. Versioning and lifecycle settings apply only to buckets created by this module. See [`docs/terraform-upgrades.md`](docs/terraform-upgrades.md) before upgrading an existing deployment, especially for the one-time inline-to-standalone security-rule migration.
@@ -248,7 +264,7 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | Name | Description |
 | ---- | ----------- |
 | generated\_node\_password | Generated Zoom Node administrator password when generate\_node\_password is true; otherwise null. |
-| hybrid\_recording\_s3\_bucket\_name | Hybrid Recording S3 bucket name, when configured. |
+| hybrid\_recording\_s3\_bucket\_name | Deprecated compatibility output. Use s3\_bucket\_names["hybrid\_recording"]. |
 | iam\_instance\_profile\_names | IAM instance profile name per workload or advanced profile key. |
 | instance\_ids | EC2 instance IDs by stable node key. |
 | nat\_gateway\_id | NAT Gateway ID when managed NAT egress is enabled. |

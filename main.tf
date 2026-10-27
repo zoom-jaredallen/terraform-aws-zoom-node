@@ -22,7 +22,7 @@ module "network" {
 module "storage_access" {
   source = "./modules/storage-access"
 
-  hybrid_recording_enabled                                      = local.hybrid_recording_enabled
+  hybrid_recording_enabled                                      = local.dedicated_hybrid_recording_storage_active
   hybrid_recording_bucket_mode                                  = var.hybrid_recording_s3_bucket_mode
   hybrid_recording_bucket_name                                  = var.hybrid_recording_s3_bucket_name
   hybrid_recording_kms_key_arn                                  = var.aws.hybrid_recording_s3_kms_key_arn
