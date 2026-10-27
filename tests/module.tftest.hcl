@@ -64,22 +64,22 @@ run "plan_meetings_hybrid_defaults" {
   }
 
   assert {
-    condition     = length(aws_instance.zoom_node) == 2
+    condition     = length(module.node.instances) == 2
     error_message = "The plan must contain two Meetings Hybrid EC2 instances."
   }
 
   assert {
-    condition     = length(aws_eip.zoom_node) == 10
+    condition     = module.node.eip_count == 10
     error_message = "Each Meetings Hybrid node must receive five Elastic IPs."
   }
 
   assert {
-    condition     = aws_instance.zoom_node["meetings_hybrid-01"].metadata_options[0].http_tokens == "required"
+    condition     = module.node.instances["meetings_hybrid-01"].metadata_http_tokens == "required"
     error_message = "Zoom Node instances must require IMDSv2."
   }
 
   assert {
-    condition     = length(aws_vpc_security_group_egress_rule.zoom_node) == 1
+    condition     = module.node.egress_rule_count == 1
     error_message = "The backward-compatible default must retain one allow-all egress rule."
   }
 }
@@ -111,22 +111,22 @@ run "plan_advanced_node_overrides" {
   }
 
   assert {
-    condition     = aws_instance.zoom_node["control_plane-01"].ami == "ami-0fedcba9876543210"
+    condition     = module.node.instances["control_plane-01"].ami == "ami-0fedcba9876543210"
     error_message = "An advanced node image override must take precedence over the catalog."
   }
 
   assert {
-    condition     = aws_network_interface.zoom_node["control_plane-01"].source_dest_check == false
+    condition     = module.node.network_interfaces["control_plane-01"].source_dest_check == false
     error_message = "The control-plane source/destination check override must be preserved."
   }
 
   assert {
-    condition     = aws_instance.zoom_node["control_plane-01"].metadata_options[0].http_put_response_hop_limit == 3
+    condition     = module.node.instances["control_plane-01"].metadata_http_put_response_hop_limit == 3
     error_message = "The per-node IMDS hop limit must be preserved."
   }
 
   assert {
-    condition     = aws_instance.zoom_node["control_plane-01"].instance_market_options[0].market_type == "spot"
+    condition     = module.node.instances["control_plane-01"].market_type == "spot"
     error_message = "The advanced node purchase option must produce a Spot request."
   }
 }
@@ -157,7 +157,7 @@ run "plan_explicit_deny_all_egress" {
   }
 
   assert {
-    condition     = length(aws_vpc_security_group_egress_rule.zoom_node) == 0
+    condition     = module.node.egress_rule_count == 0
     error_message = "deny_all must create no outbound security-group rules."
   }
 }
@@ -176,7 +176,7 @@ run "plan_workload_specific_egress" {
   }
 
   assert {
-    condition     = length(aws_vpc_security_group_egress_rule.zoom_node) == 2
+    condition     = module.node.egress_rule_count == 2
     error_message = "Meetings Hybrid workload-specific egress must include Zoom HTTPS and media rules."
   }
 }
@@ -189,7 +189,7 @@ run "plan_legacy_least_privilege_egress" {
   }
 
   assert {
-    condition     = length(aws_vpc_security_group_egress_rule.zoom_node) == 2
+    condition     = module.node.egress_rule_count == 2
     error_message = "The deprecated least-privilege boolean must retain its workload-specific behavior."
   }
 }
@@ -239,37 +239,37 @@ run "plan_storage_and_encryption_hardening" {
   }
 
   assert {
-    condition     = aws_instance.zoom_node["hybrid_recording-01"].root_block_device[0].kms_key_id == "arn:aws:kms:us-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
+    condition     = module.node.instances["hybrid_recording-01"].root_volume_kms_key_id == "arn:aws:kms:us-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
     error_message = "The supplied EBS KMS key must be applied to Zoom Node root volumes."
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.zoom_node["hybrid_recording-01"].retention_in_days == 90
+    condition     = module.node.log_groups["hybrid_recording-01"].retention_in_days == 90
     error_message = "CloudWatch Logs retention must use the configured value."
   }
 
   assert {
-    condition     = aws_cloudwatch_log_group.zoom_node["hybrid_recording-01"].kms_key_id == "arn:aws:kms:us-west-2:123456789012:key/22222222-2222-2222-2222-222222222222"
+    condition     = module.node.log_groups["hybrid_recording-01"].kms_key_id == "arn:aws:kms:us-west-2:123456789012:key/22222222-2222-2222-2222-222222222222"
     error_message = "The supplied CloudWatch Logs KMS key must be applied."
   }
 
   assert {
-    condition     = one(one(aws_s3_bucket_server_side_encryption_configuration.hybrid_recording[0].rule).apply_server_side_encryption_by_default).sse_algorithm == "aws:kms"
+    condition     = module.storage_access.test_contract.hybrid_encryption_algorithm == "aws:kms"
     error_message = "The managed Hybrid Recording bucket must use AWS KMS when a key is supplied."
   }
 
   assert {
-    condition     = length(aws_s3_bucket_versioning.hybrid_recording) == 1 && length(aws_s3_bucket_lifecycle_configuration.hybrid_recording) == 1
+    condition     = module.storage_access.test_contract.hybrid_versioning_count == 1 && module.storage_access.test_contract.hybrid_lifecycle_count == 1
     error_message = "Configured Hybrid Recording versioning and lifecycle resources must be planned."
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.hybrid_recording_s3["HybridRecording"].policy).Statement[0].Action, "s3:PutObject")
+    condition     = contains(jsondecode(module.storage_access.test_contract.hybrid_policies["HybridRecording"]).Statement[0].Action, "s3:PutObject")
     error_message = "Hybrid Recording IAM must use the configured granular S3 actions."
   }
 
   assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.hybrid_recording_s3["HybridRecording"].policy).Statement[1].Action, "kms:GenerateDataKey")
+    condition     = contains(jsondecode(module.storage_access.test_contract.hybrid_policies["HybridRecording"]).Statement[1].Action, "kms:GenerateDataKey")
     error_message = "Hybrid Recording IAM must include scoped KMS data-key permissions."
   }
 }

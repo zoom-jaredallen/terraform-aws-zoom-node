@@ -12,6 +12,7 @@
 *.plan
 **/local.auto.tfvars
 **/*.tfvars.local
+**/.migration/
 crash.log
 crash.*.log
 .pytest_cache/

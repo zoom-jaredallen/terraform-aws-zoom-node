@@ -20,12 +20,12 @@ output "private_subnet_ids" {
 
 output "nat_gateway_id" {
   description = "NAT Gateway ID when managed NAT egress is enabled."
-  value       = try(aws_nat_gateway.this[0].id, null)
+  value       = module.network.nat_gateway_id
 }
 
 output "nat_gateway_public_ip" {
   description = "NAT Gateway Elastic IP when managed NAT egress is enabled."
-  value       = try(aws_eip.nat[0].public_ip, null)
+  value       = module.network.nat_gateway_public_ip
 }
 
 output "workload_node_counts" {
@@ -37,9 +37,7 @@ output "workload_node_counts" {
 
 output "security_group_ids" {
   description = "Security group ID per enabled workload."
-  value = {
-    for workload_type, security_group in aws_security_group.zoom_node : workload_type => security_group.id
-  }
+  value       = module.node.security_group_ids
 }
 
 output "node_names" {
@@ -51,9 +49,7 @@ output "node_names" {
 
 output "instance_ids" {
   description = "EC2 instance IDs by stable node key."
-  value = {
-    for node_key, instance in aws_instance.zoom_node : node_key => instance.id
-  }
+  value       = module.node.instance_ids
 }
 
 output "node_fqdns" {
@@ -70,12 +66,7 @@ output "node_private_ips" {
 
 output "node_public_ips" {
   description = "Elastic public IPv4 addresses by node key."
-  value = {
-    for node_key, node in local.node_records : node_key => [
-      for eip_key, eip in aws_eip.zoom_node : eip.public_ip
-      if local.node_eip_records[eip_key].node_key == node_key
-    ]
-  }
+  value       = module.node.node_public_ips
 }
 
 output "node_purchase_options" {
@@ -100,9 +91,7 @@ output "generated_node_password" {
 
 output "iam_instance_profile_names" {
   description = "IAM instance profile name per workload or advanced profile key."
-  value = {
-    for workload_type, profile in aws_iam_instance_profile.zoom_node : workload_type => profile.name
-  }
+  value       = module.storage_access.iam_instance_profile_names
 }
 
 output "s3_bucket_names" {

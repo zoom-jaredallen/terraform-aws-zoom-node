@@ -7,7 +7,7 @@ locals {
   subnet_count = var.availability_zone_config == "dual_az" ? 2 : 1
 
   node_password_supplied  = nonsensitive(var.node_password != null)
-  effective_node_password = var.generate_node_password ? random_password.node[0].result : coalesce(var.node_password, "")
+  effective_node_password = var.generate_node_password ? random_password.node[0].result : (var.node_password != null ? var.node_password : "")
 
   image_catalog    = jsondecode(file("${path.module}/image-catalog.json"))
   instance_catalog = jsondecode(file("${path.module}/instance-catalog.json"))

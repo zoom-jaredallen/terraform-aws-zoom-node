@@ -1,0 +1,16 @@
+variable "create_new_network" { type = bool }
+variable "deployment_mode" { type = string }
+variable "vpc_cidr" { type = string }
+variable "public_subnet_count" { type = number }
+variable "private_subnet_count" { type = number }
+variable "requires_private_subnets" { type = bool }
+variable "public_subnet_cidrs" { type = list(string) }
+variable "private_subnet_cidrs" { type = list(string) }
+variable "availability_zones" { type = list(string) }
+variable "enable_public_ipv4_on_boot" { type = bool }
+variable "create_nat_gateway" { type = bool }
+variable "existing_vpc_id" { type = string }
+variable "existing_subnet_ids" { type = list(string) }
+variable "dns_servers" { type = list(string) }
+variable "environment_name" { type = string }
+variable "common_tags" { type = map(string) }

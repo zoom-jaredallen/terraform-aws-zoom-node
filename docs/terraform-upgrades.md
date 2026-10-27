@@ -41,6 +41,12 @@ Review every plan for the `-/+` replacement marker. Common changes have these ex
 
 ## State moves
 
+### Flat implementation-module migration
+
+The root module now delegates AWS resource ownership to private `network`, `node`, and `storage-access` modules. The public variables, outputs, stable node keys, and generated-password state address are unchanged. Retained `moved` blocks migrate existing state from root resource addresses to the child modules during the first plan after upgrade.
+
+Expect the plan to show messages such as `aws_instance.zoom_node["meetings_hybrid-01"] has moved to module.node.aws_instance.zoom_node["meetings_hybrid-01"]`. A pure internal migration must not show destruction or replacement for those resources. Back up state and stop if the plan proposes `-/+` changes that are not explained by other configuration changes.
+
 When a configuration rename changes a Terraform address but not the real infrastructure, add a declarative `moved` block to the calling root or module instead of using destructive recreation. Commit the block with the change and retain it for downstream consumers that may skip intermediate releases.
 
 ```hcl
@@ -58,22 +64,24 @@ Import existing resources only after configuring the module so its stable keys, 
 
 ```hcl
 import {
-  to = module.zoom_node.aws_instance.zoom_node["meetings_hybrid-01"]
+  to = module.zoom_node.module.node.aws_instance.zoom_node["meetings_hybrid-01"]
   id = "i-0123456789abcdef0"
 }
 
 import {
-  to = module.zoom_node.aws_network_interface.zoom_node["meetings_hybrid-01"]
+  to = module.zoom_node.module.node.aws_network_interface.zoom_node["meetings_hybrid-01"]
   id = "eni-0123456789abcdef0"
 }
 
 import {
-  to = module.zoom_node.aws_security_group.zoom_node["MeetingsHybrid"]
+  to = module.zoom_node.module.node.aws_security_group.zoom_node["MeetingsHybrid"]
   id = "sg-0123456789abcdef0"
 }
 ```
 
 Standalone ingress and egress rules can be imported using their AWS security-group rule IDs (`sgr-...`) and the exact deterministic address shown by a speculative plan. Existing module-managed inline rules normally migrate during apply and do not need manual import.
+
+Network resources import under `module.zoom_node.module.network`, and S3/IAM resources import under `module.zoom_node.module.storage_access`. Always use the address shown by the current module version rather than an address copied from an older release.
 
 Run `terraform plan` after each import batch. Resolve every unexpected update or replacement before applying; import records state ownership but does not make the configuration match the remote object.
 

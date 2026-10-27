@@ -4,6 +4,13 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+### Added
+
+- Split AWS resource ownership into private `network`, `node`, and `storage-access` implementation modules while retaining the root module as a compatible facade.
+- Added retained state moves and a repository migration-contract check for the flat module extraction.
+- Expanded native Terraform contract coverage from 8 to 30 plan-only tests across every workload, networking modes, Availability Zone placement, NAT, Spot, AMI channels, NIC mappings, IP validation, S3 modes, and per-node overrides.
+- Added a repository gate that prevents required contract categories from being removed silently.
+
 ### Fixed
 
 - Use the immutable GitHub release tag in consumer examples while Terraform Registry publication is disabled.

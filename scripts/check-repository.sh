@@ -10,6 +10,9 @@ tflint --config="$repo_root/.tflint.hcl" --init
 tflint --config="$repo_root/.tflint.hcl" --minimum-failure-severity=warning
 terraform init -backend=false -input=false
 terraform validate
+./scripts/check-test-contract-coverage.sh
+./scripts/check-module-extraction.sh
+./scripts/test-capture-deployment-baseline.sh
 terraform test
 
 while IFS= read -r dir; do
