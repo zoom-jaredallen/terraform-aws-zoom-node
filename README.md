@@ -1,6 +1,42 @@
-# Zoom Node AWS Terraform Module
+# Terraform AWS Zoom Node
 
-This module is the AWS-native Terraform MVP for Zoom Node deployments. It intentionally mirrors the CloudFormation product model while avoiding CloudFormation macros and nested stacks.
+An AWS-native Terraform module for deploying Zoom Node workloads.
+
+[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.7-844FBA.svg)](https://www.terraform.io/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+## Usage
+
+```hcl
+module "zoom_node" {
+  source  = "zoom-jaredallen/zoom-node/aws"
+  version = "~> 0.1"
+
+  environment_name       = "demo"
+  domain_name            = "lab.example.com"
+  deployment_mode        = "public_cloud"
+  network_mode           = "create_new"
+  registration_code      = var.registration_code
+  generate_node_password = true
+
+  source_cidrs = {
+    remote_management_1 = ["203.0.113.10/32"]
+    internal_traffic    = ["10.0.0.0/16"]
+  }
+
+  workloads = {
+    meetings_hybrid = {
+      enabled  = true
+      capacity = 500
+    }
+  }
+
+  aws = {
+    vpc_cidr           = "10.0.0.0/16"
+    availability_zones = ["us-west-2a"]
+  }
+}
+```
 
 ## Scope
 
@@ -35,15 +71,14 @@ Set `aws.create_nat_gateway = true` when private groups need outbound access. Th
 
 Set `aws.security_group_egress_profiles` by workload or advanced security-profile key to choose `allow_all`, `workload_specific`, or `deny_all`. Existing configurations keep unrestricted egress by default. `enable_least_privilege_egress` is deprecated but remains supported for compatibility.
 
-Customer-managed KMS key inputs reference externally managed keys. The caller is responsible for key policies. Versioning and lifecycle settings apply only to buckets created by this module. See [`docs/terraform-upgrades.md`](../../../docs/terraform-upgrades.md) before upgrading an existing deployment, especially for the one-time inline-to-standalone security-rule migration.
-
-The complete seven-node advanced example is in `terraform/deployments/us-west-2-labcluster`. It combines Meetings Hybrid with a Kubernetes master and private workers without adding Kubernetes roles to the portable workload catalog.
+Customer-managed KMS key inputs reference externally managed keys. The caller is responsible for key policies. Versioning and lifecycle settings apply only to buckets created by this module. See [`docs/terraform-upgrades.md`](docs/terraform-upgrades.md) before upgrading an existing deployment, especially for the one-time inline-to-standalone security-rule migration.
 
 ## Example
 
 ```hcl
 module "zoom_node" {
-  source = "../../modules/zoom-node-aws"
+  source  = "zoom-jaredallen/zoom-node/aws"
+  version = "~> 0.1"
 
   environment_name  = "demo"
   domain_name       = "lab.zoomdemos.com"
@@ -85,7 +120,7 @@ Terraform stores rendered user data in state. Treat the state backend as sensiti
 
 Set `generate_node_password = true` to let the module create a compliant 16-character password. In this mode, omit `node_password` and retrieve the result with `terraform output -raw generated_node_password`. To supply a password instead, leave generation disabled and pass `node_password` through a sensitive variable or `TF_VAR_node_password`. Terraform rejects configurations that select both methods or neither method.
 
-Start with `terraform/examples/aws-smoke-single-node` when testing in a real AWS account. It deploys one Meeting Survivability node and exercises the same network, ENI, security group, Elastic IP, and user-data paths with a smaller blast radius.
+Start with [`examples/aws-smoke-single-node`](examples/aws-smoke-single-node) when testing in a real AWS account. It deploys one Meeting Survivability node and exercises the same network, ENI, security group, Elastic IP, and user-data paths with a smaller blast radius.
 
 The module reads the EC2 regional Elastic IP quota and existing EIP allocations during planning. Public cloud deployments fail early when the selected workloads need more Elastic IPs than the account can allocate in the target region.
 
