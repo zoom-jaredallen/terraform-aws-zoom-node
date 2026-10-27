@@ -27,7 +27,7 @@ jobs:
         with:
           working-dir: .
           config-file: .terraform-docs.yml
-          output-check: true
+          fail-on-diff: true
 
       - name: Set up TFLint
         uses: terraform-linters/setup-tflint@v6.2.2
@@ -36,9 +36,6 @@ jobs:
 
       - name: Terraform format
         run: terraform fmt -check -recursive .
-
-      - name: Check generated module documentation
-        run: terraform-docs --config .terraform-docs.yml --output-check .
 
       - name: Initialize TFLint
         run: tflint --config="$(pwd)/.tflint.hcl" --init
