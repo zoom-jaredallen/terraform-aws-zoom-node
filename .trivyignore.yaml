@@ -1,0 +1,6 @@
+misconfigurations:
+  - id: AWS-0132
+    paths:
+      - storage.tf
+    statement: Managed buckets use AWS-managed SSE-S3 by default and support opt-in customer-managed KMS keys.
+    expired_at: 2027-01-31

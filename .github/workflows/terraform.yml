@@ -1,0 +1,81 @@
+name: Terraform
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.0"
+
+      - name: Set up terraform-docs
+        uses: terraform-docs/gh-actions@v1.4.1
+        with:
+          working-dir: .
+          config-file: .terraform-docs.yml
+          output-check: true
+
+      - name: Set up TFLint
+        uses: terraform-linters/setup-tflint@v6.2.2
+        with:
+          tflint_version: v0.64.0
+
+      - name: Terraform format
+        run: terraform fmt -check -recursive .
+
+      - name: Check generated module documentation
+        run: terraform-docs --config .terraform-docs.yml --output-check .
+
+      - name: Initialize TFLint
+        run: tflint --config="$(pwd)/.tflint.hcl" --init
+
+      - name: Lint module
+        run: tflint --config="$(pwd)/.tflint.hcl" --minimum-failure-severity=warning
+
+      - name: Validate module
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Run native Terraform contract tests
+        run: terraform test
+
+      - name: Validate examples
+        shell: bash
+        run: |
+          while IFS= read -r dir; do
+            terraform -chdir="$dir" init -backend=false -lockfile=readonly
+            terraform -chdir="$dir" validate
+            tflint --config="$(pwd)/.tflint.hcl" --chdir="$dir" --minimum-failure-severity=warning
+          done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
+
+      - name: Scan Terraform configuration
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          trivyignores: .trivyignore.yaml
+
+      - name: Scan repository for secrets
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          exit-code: "1"
