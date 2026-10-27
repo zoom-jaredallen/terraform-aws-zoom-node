@@ -1,0 +1,270 @@
+{
+  "workloads": {
+    "MeetingsHybrid": {
+      "display_name": "Zoom Meetings Hybrid",
+      "input_key": "meetings_hybrid",
+      "prefix": "zmh",
+      "default_start_offset": 10,
+      "capacity": {
+        "metric": "ConcurrentPrivateMeetingAttendees",
+        "per_node": 400,
+        "min_nodes": 2,
+        "sized": true
+      },
+      "resources": {
+        "vcpu": 8,
+        "memory_gb": 16,
+        "root_volume_gb": 200,
+        "enis_per_node": 1,
+        "private_ips_per_node": 5,
+        "public_ips_per_node": {
+          "public_cloud": 5,
+          "private_cloud": 0
+        }
+      },
+      "features": {
+        "uses_s3_storage": false,
+        "uses_managed_redis": false,
+        "services_co_resident": false
+      },
+      "provider_defaults": {
+        "aws": {
+          "instance_type": "c6i.2xlarge"
+        },
+        "azure": {
+          "vm_size": "Standard_D8s_v5"
+        },
+        "gcp": {
+          "machine_type": "n2-standard-8"
+        },
+        "oci": {
+          "shape": "VM.Standard3.Flex",
+          "ocpus": 4,
+          "memory_gb": 16
+        }
+      }
+    },
+    "HybridRecording": {
+      "display_name": "Zoom Hybrid Recording",
+      "input_key": "hybrid_recording",
+      "prefix": "zhr",
+      "default_start_offset": 110,
+      "capacity": {
+        "metric": "SimultaneousRecordings",
+        "per_node": 30,
+        "min_nodes": 2,
+        "sized": true
+      },
+      "resources": {
+        "vcpu": 24,
+        "memory_gb": 96,
+        "root_volume_gb": 200,
+        "enis_per_node": 1,
+        "private_ips_per_node": 5,
+        "public_ips_per_node": {
+          "public_cloud": 1,
+          "private_cloud": 0
+        }
+      },
+      "features": {
+        "uses_s3_storage": true,
+        "uses_managed_redis": true,
+        "services_co_resident": false
+      },
+      "provider_defaults": {
+        "aws": {
+          "instance_type": "m6i.6xlarge"
+        },
+        "azure": {
+          "vm_size": "Standard_D24s_v5"
+        },
+        "gcp": {
+          "machine_type": "n2-standard-24"
+        },
+        "oci": {
+          "shape": "VM.Standard3.Flex",
+          "ocpus": 12,
+          "memory_gb": 96
+        }
+      }
+    },
+    "MeetingSurvivability": {
+      "display_name": "Zoom Meeting Survivability",
+      "input_key": "meeting_survivability",
+      "prefix": "zms",
+      "default_start_offset": 100,
+      "capacity": {
+        "metric": "ConcurrentSurvivabilityAttendees",
+        "per_node": 1,
+        "min_nodes": 1,
+        "sized": false
+      },
+      "resources": {
+        "vcpu": 4,
+        "memory_gb": 8,
+        "root_volume_gb": 200,
+        "enis_per_node": 1,
+        "private_ips_per_node": 5,
+        "public_ips_per_node": {
+          "public_cloud": 1,
+          "private_cloud": 0
+        }
+      },
+      "features": {
+        "uses_s3_storage": false,
+        "uses_managed_redis": false,
+        "services_co_resident": true
+      },
+      "provider_defaults": {
+        "aws": {
+          "instance_type": "c6i.xlarge"
+        },
+        "azure": {
+          "vm_size": "Standard_D4s_v5"
+        },
+        "gcp": {
+          "machine_type": "n2-standard-4"
+        },
+        "oci": {
+          "shape": "VM.Standard3.Flex",
+          "ocpus": 2,
+          "memory_gb": 8
+        }
+      }
+    },
+    "WebApplicationGateway": {
+      "display_name": "Zoom Web Application Gateway",
+      "input_key": "web_application_gateway",
+      "prefix": "wag",
+      "default_start_offset": 120,
+      "capacity": {
+        "metric": "ConcurrentWebPrivateMeetingAttendees",
+        "per_node": 200,
+        "min_nodes": 2,
+        "sized": true
+      },
+      "resources": {
+        "vcpu": 8,
+        "memory_gb": 16,
+        "root_volume_gb": 200,
+        "enis_per_node": 1,
+        "private_ips_per_node": 5,
+        "public_ips_per_node": {
+          "public_cloud": 1,
+          "private_cloud": 0
+        }
+      },
+      "features": {
+        "uses_s3_storage": false,
+        "uses_managed_redis": false,
+        "services_co_resident": false
+      },
+      "provider_defaults": {
+        "aws": {
+          "instance_type": "c6i.2xlarge"
+        },
+        "azure": {
+          "vm_size": "Standard_D8s_v5"
+        },
+        "gcp": {
+          "machine_type": "n2-standard-8"
+        },
+        "oci": {
+          "shape": "VM.Standard3.Flex",
+          "ocpus": 4,
+          "memory_gb": 16
+        }
+      }
+    },
+    "AiServices": {
+      "display_name": "Zoom AI Services",
+      "input_key": "ai_services",
+      "prefix": "zai",
+      "default_start_offset": 140,
+      "capacity": {
+        "metric": "AiServiceNodes",
+        "per_node": 1,
+        "min_nodes": 1,
+        "sized": false
+      },
+      "resources": {
+        "vcpu": 48,
+        "memory_gb": 192,
+        "root_volume_gb": 500,
+        "enis_per_node": 1,
+        "private_ips_per_node": 1,
+        "public_ips_per_node": {
+          "public_cloud": 0,
+          "private_cloud": 0
+        }
+      },
+      "features": {
+        "uses_s3_storage": false,
+        "uses_managed_redis": false,
+        "services_co_resident": false
+      },
+      "provider_defaults": {
+        "aws": {
+          "instance_type": "g6.12xlarge",
+          "supported_instance_types": [
+            "g6.12xlarge",
+            "g7e.2xlarge"
+          ]
+        },
+        "azure": {
+          "vm_size": "Standard_NC24ads_A100_v4"
+        },
+        "gcp": {
+          "machine_type": "g2-standard-48"
+        },
+        "oci": {
+          "shape": "VM.GPU.A10.2"
+        }
+      }
+    },
+    "PhoneLocalSurvivability": {
+      "display_name": "Zoom Phone Local Survivability",
+      "input_key": "phone_local_survivability",
+      "prefix": "zpls",
+      "default_start_offset": 130,
+      "capacity": {
+        "metric": "PhoneRegistrations",
+        "per_node": 5000,
+        "min_nodes": 2,
+        "sized": true
+      },
+      "resources": {
+        "vcpu": 8,
+        "memory_gb": 16,
+        "root_volume_gb": 200,
+        "enis_per_node": 1,
+        "private_ips_per_node": 5,
+        "public_ips_per_node": {
+          "public_cloud": 1,
+          "private_cloud": 0
+        }
+      },
+      "features": {
+        "uses_s3_storage": false,
+        "uses_managed_redis": false,
+        "services_co_resident": false
+      },
+      "provider_defaults": {
+        "aws": {
+          "instance_type": "c6i.2xlarge"
+        },
+        "azure": {
+          "vm_size": "Standard_D8s_v5"
+        },
+        "gcp": {
+          "machine_type": "n2-standard-8"
+        },
+        "oci": {
+          "shape": "VM.Standard3.Flex",
+          "ocpus": 4,
+          "memory_gb": 16
+        }
+      }
+    }
+  }
+}

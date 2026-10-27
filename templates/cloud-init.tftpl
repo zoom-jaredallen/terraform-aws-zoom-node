@@ -1,0 +1,19 @@
+#custom-config
+hostname: ${hostname}
+password: "${password}"
+registration_code: "${registration_code}"
+
+network:
+  ethernets:
+    ${network_interface_name}:
+      dhcp4: false
+      addresses:
+%{ for address in addresses ~}
+        - ${address}
+%{ endfor ~}
+      gateway: ${gateway}
+      nameservers:
+        addresses:
+%{ for dns_server in dns_servers ~}
+          - ${dns_server}
+%{ endfor ~}

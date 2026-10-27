@@ -1,0 +1,4 @@
+aws_region          = "us-west-2"
+registration_code   = "REPLACE_WITH_FRESH_ZOOM_NODE_CODE"
+existing_vpc_id     = "vpc-0123456789abcdef0"
+existing_subnet_ids = ["subnet-0123456789abcdef0"]

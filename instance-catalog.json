@@ -1,0 +1,40 @@
+{
+  "aws": {
+    "c6i.2xlarge": {
+      "network_interface_name": "ens5"
+    },
+    "c6i.xlarge": {
+      "network_interface_name": "ens5"
+    },
+    "c7i-flex.xlarge": {
+      "network_interface_name": "enp39s0"
+    },
+    "c8i-flex.2xlarge": {
+      "network_interface_name": "enp39s0"
+    },
+    "c8i.4xlarge": {
+      "network_interface_name": "enp39s0"
+    },
+    "g6.12xlarge": {
+      "network_interface_name": "ens5"
+    },
+    "g6.2xlarge": {
+      "network_interface_name": "enp39s0"
+    },
+    "g7e.2xlarge": {
+      "network_interface_name": "ens5"
+    },
+    "m6i.6xlarge": {
+      "network_interface_name": "ens5"
+    },
+    "m7i.2xlarge": {
+      "network_interface_name": "enp39s0"
+    },
+    "t3.large": {
+      "network_interface_name": "ens5"
+    },
+    "t3.xlarge": {
+      "network_interface_name": "ens5"
+    }
+  }
+}
