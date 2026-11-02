@@ -9,12 +9,14 @@ Running it creates cost-bearing EC2, EBS, Elastic IP, CloudWatch, IAM, security-
 ```bash
 cd examples/aws-smoke-single-node
 cp terraform.tfvars.example local.auto.tfvars
-# Replace the registration code placeholder and optionally select aws_region.
+# Replace the registration code and customer-accessible AMI placeholders.
 
 terraform init
-terraform plan
-terraform apply
+terraform plan -out=tfplan
+../../scripts/check-ec2-capacity.sh --terraform-plan tfplan
+terraform apply tfplan
 terraform output -raw generated_node_password
+rm -f tfplan
 ```
 
 Authenticate with AWS SSO, an AWS profile, or environment variables before running Terraform. `local.auto.tfvars` is ignored by Git and loaded automatically.

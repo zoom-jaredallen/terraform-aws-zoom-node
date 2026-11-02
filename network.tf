@@ -39,12 +39,14 @@ locals {
     length(var.aws.private_subnet_cidrs) > subnet_index ? var.aws.private_subnet_cidrs[subnet_index] : cidrsubnet(var.aws.vpc_cidr, var.aws.subnet_newbits, local.subnet_count + subnet_index)
   ]
 
-  effective_vpc_id               = module.network.vpc_id
-  effective_vpc_cidr             = module.network.vpc_cidr
-  effective_public_subnet_ids    = module.network.public_subnet_ids
-  effective_public_subnet_cidrs  = module.network.public_subnet_cidrs
-  effective_private_subnet_ids   = module.network.private_subnet_ids
-  effective_private_subnet_cidrs = module.network.private_subnet_cidrs
-  effective_subnet_ids           = module.network.public_subnet_ids
-  effective_dns_servers          = module.network.dns_servers
+  effective_vpc_id                            = module.network.vpc_id
+  effective_vpc_cidr                          = module.network.vpc_cidr
+  effective_public_subnet_ids                 = module.network.public_subnet_ids
+  effective_public_subnet_cidrs               = module.network.public_subnet_cidrs
+  effective_public_subnet_availability_zones  = module.network.public_subnet_availability_zones
+  effective_private_subnet_ids                = module.network.private_subnet_ids
+  effective_private_subnet_cidrs              = module.network.private_subnet_cidrs
+  effective_private_subnet_availability_zones = module.network.private_subnet_availability_zones
+  effective_subnet_ids                        = module.network.public_subnet_ids
+  effective_dns_servers                       = module.network.dns_servers
 }

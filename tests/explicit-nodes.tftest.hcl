@@ -20,6 +20,13 @@ mock_provider "aws" {
   mock_data "aws_subnet" {
     defaults = { cidr_block = "10.2.101.0/24" }
   }
+
+  mock_data "aws_ami" {
+    defaults = {
+      architecture = "x86_64"
+      state        = "available"
+    }
+  }
 }
 
 mock_provider "random" {}
@@ -59,8 +66,9 @@ run "plan_explicit_nodes_with_external_dependencies" {
         fqdn                      = "jp01worker1-ap-northeast-1a"
         role                      = "ai_services"
         instance_type             = "g6.12xlarge"
-        image_id                  = "ami-0f31cf9510e341030"
+        image_id                  = "ami-0a111111111111111"
         root_volume_gb            = 500
+        instance_create_timeout   = "6m"
         private_ips               = ["10.2.101.241"]
         subnet_tier               = "public"
         source_dest_check         = true
@@ -70,7 +78,7 @@ run "plan_explicit_nodes_with_external_dependencies" {
       "jp01worker2-ap-northeast-1a" = {
         role               = "ai_services"
         instance_type      = "g6.2xlarge"
-        image_id           = "ami-0f31cf9510e341030"
+        image_id           = "ami-0a111111111111111"
         root_volume_gb     = 500
         private_ips        = ["10.2.101.242"]
         subnet_tier        = "public"
@@ -108,6 +116,11 @@ run "plan_explicit_nodes_with_external_dependencies" {
     condition     = strcontains(nonsensitive(base64decode(module.node.instances["jp01worker1-ap-northeast-1a"].user_data_base64)), "hostname: jp01worker1-ap-northeast-1a")
     error_message = "An explicitly preserved appliance hostname must be rendered without a domain suffix."
   }
+
+  assert {
+    condition     = module.node.instances["jp01worker1-ap-northeast-1a"].instance_create_timeout == "6m" && module.node.instances["jp01worker2-ap-northeast-1a"].instance_create_timeout == "10m"
+    error_message = "An explicit-node timeout must override the global default without affecting other nodes."
+  }
 }
 
 run "reject_duplicate_explicit_node_key" {
@@ -123,7 +136,7 @@ run "reject_duplicate_explicit_node_key" {
         role                    = "ai_services"
         hostname_prefix         = "duplicate"
         instance_type           = "g6.2xlarge"
-        image_id                = "ami-0f31cf9510e341030"
+        image_id                = "ami-0a111111111111111"
         root_volume_gb          = 500
         private_ip_start_offset = 10
         subnet_tier             = "public"
@@ -135,7 +148,7 @@ run "reject_duplicate_explicit_node_key" {
       "duplicate-01" = {
         role               = "ai_services"
         instance_type      = "g6.2xlarge"
-        image_id           = "ami-0f31cf9510e341030"
+        image_id           = "ami-0a111111111111111"
         root_volume_gb     = 500
         private_ips        = ["10.2.101.20"]
         subnet_tier        = "public"
@@ -157,7 +170,7 @@ run "reject_empty_explicit_private_ips" {
       empty = {
         role               = "ai_services"
         instance_type      = "g6.2xlarge"
-        image_id           = "ami-0f31cf9510e341030"
+        image_id           = "ami-0a111111111111111"
         root_volume_gb     = 500
         private_ips        = []
         subnet_tier        = "public"
@@ -179,7 +192,7 @@ run "reject_explicit_ip_outside_subnet" {
       outside = {
         role               = "ai_services"
         instance_type      = "g6.2xlarge"
-        image_id           = "ami-0f31cf9510e341030"
+        image_id           = "ami-0a111111111111111"
         root_volume_gb     = 500
         private_ips        = ["10.3.101.20"]
         subnet_tier        = "public"
@@ -201,7 +214,7 @@ run "reject_explicit_eips_without_private_ips" {
       excessive_eips = {
         role                 = "ai_services"
         instance_type        = "g6.2xlarge"
-        image_id             = "ami-0f31cf9510e341030"
+        image_id             = "ami-0a111111111111111"
         root_volume_gb       = 500
         private_ips          = ["10.2.101.20"]
         elastic_ips_per_node = 2
@@ -224,7 +237,7 @@ run "reject_mixed_explicit_security_ownership" {
       mixed_security = {
         role               = "ai_services"
         instance_type      = "g6.2xlarge"
-        image_id           = "ami-0f31cf9510e341030"
+        image_id           = "ami-0a111111111111111"
         root_volume_gb     = 500
         private_ips        = ["10.2.101.20"]
         subnet_tier        = "public"
@@ -247,7 +260,7 @@ run "reject_mixed_explicit_iam_ownership" {
       mixed_iam = {
         role                      = "ai_services"
         instance_type             = "g6.2xlarge"
-        image_id                  = "ami-0f31cf9510e341030"
+        image_id                  = "ami-0a111111111111111"
         root_volume_gb            = 500
         private_ips               = ["10.2.101.20"]
         subnet_tier               = "public"

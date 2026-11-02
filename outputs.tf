@@ -76,6 +76,11 @@ output "node_purchase_options" {
   }
 }
 
+output "capacity_preflight_requests" {
+  description = "Nonsensitive EC2 capacity requests resolved from the planned Zoom Node inventory."
+  value       = local.capacity_preflight_requests
+}
+
 output "node_roles" {
   description = "Role assigned to each normalized node."
   value = {

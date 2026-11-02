@@ -9,12 +9,14 @@ Running this example creates cost-bearing EC2 instances, EBS volumes, Elastic IP
 ```bash
 cd examples/aws-existing-vpc
 cp terraform.tfvars.example local.auto.tfvars
-# Replace the registration code, VPC ID, and subnet ID placeholders.
+# Replace the registration code, AMI, VPC ID, and subnet ID placeholders.
 
 terraform init
-terraform plan
-terraform apply
+terraform plan -out=tfplan
+../../scripts/check-ec2-capacity.sh --terraform-plan tfplan
+terraform apply tfplan
 terraform output -raw generated_node_password
+rm -f tfplan
 ```
 
 Authenticate with AWS SSO, an AWS profile, or environment variables before running Terraform. `local.auto.tfvars` is ignored by Git and loaded automatically.

@@ -13,6 +13,25 @@ locals {
   instance_catalog = jsondecode(file("${path.module}/instance-catalog.json"))
   workload_catalog = jsondecode(file("${path.module}/workload-catalog.json"))
 
+  customer_image_ids_by_channel = {
+    for channel in ["prod", "dev"] :
+    channel => trimspace(lookup(var.image_ids[channel], data.aws_region.current.region, ""))
+  }
+  legacy_global_image_id = trimspace(var.aws.image_id)
+  legacy_regional_image_id = trimspace(lookup(
+    var.aws.image_ids,
+    data.aws_region.current.region,
+    ""
+  ))
+  resolved_image_ids_by_channel = {
+    for channel in ["prod", "dev"] : channel => (
+      local.customer_image_ids_by_channel[channel] != "" ? local.customer_image_ids_by_channel[channel] :
+      local.legacy_global_image_id != "" ? local.legacy_global_image_id :
+      local.legacy_regional_image_id != "" ? local.legacy_regional_image_id :
+      try(trimspace(local.image_catalog.aws[channel][data.aws_region.current.region]), "")
+    )
+  }
+
   catalog_network_interface_names_by_instance_type = {
     for instance_type, config in local.instance_catalog.aws :
     instance_type => config.network_interface_name
@@ -63,7 +82,7 @@ locals {
       min_nodes            = defaults.min_nodes
       node_count           = defaults.capacity_sized ? max(defaults.min_nodes, try(local.workload_configs[workload_type].node_count_override, 0) > 0 ? local.workload_configs[workload_type].node_count_override : ceil(max(try(local.workload_configs[workload_type].capacity, 0), 1) / defaults.capacity_per_node)) : max(defaults.min_nodes, try(local.workload_configs[workload_type].node_count, defaults.min_nodes))
       instance_type        = coalesce(try(local.workload_configs[workload_type].instance_type, null), defaults.instance_type)
-      image_id             = try(local.workload_configs[workload_type].image_id, null) != null && trimspace(local.workload_configs[workload_type].image_id) != "" ? trimspace(local.workload_configs[workload_type].image_id) : trimspace(var.aws.image_id) != "" ? trimspace(var.aws.image_id) : lookup(var.aws.image_ids, data.aws_region.current.region, try(local.image_catalog.aws[var.image_channel][data.aws_region.current.region], ""))
+      image_id             = try(local.workload_configs[workload_type].image_id, null) != null && trimspace(local.workload_configs[workload_type].image_id) != "" ? trimspace(local.workload_configs[workload_type].image_id) : local.resolved_image_ids_by_channel[var.image_channel]
       root_volume_gb       = coalesce(try(local.workload_configs[workload_type].root_volume_gb, null), defaults.root_volume_gb)
       private_ips_per_eni  = max(defaults.minimum_private_ips_per_eni, coalesce(try(local.workload_configs[workload_type].private_ips_per_eni, null), defaults.private_ips_per_eni))
       elastic_ips_per_node = max(defaults.minimum_elastic_ips_per_node, coalesce(try(local.workload_configs[workload_type].elastic_ips_per_node, null), defaults.elastic_ips_per_node))
@@ -96,6 +115,7 @@ locals {
         role                                 = workload_type
         subnet_tier                          = "public"
         purchase_option                      = var.aws.purchase_option
+        instance_create_timeout              = null
         source_dest_check                    = lookup(var.aws.node_source_dest_check, "${workload.input_key}-${format("%02d", node_index + 1)}", true)
         metadata_http_put_response_hop_limit = var.aws.metadata_http_put_response_hop_limit
         security_profile                     = workload_type
@@ -115,22 +135,18 @@ locals {
   advanced_node_record_list = flatten([
     for group_key, group in var.node_groups : [
       for node_index in range(group.count) : {
-        key           = "${group_key}-${format("%02d", node_index + 1)}"
-        workload_type = group.role
-        input_key     = group_key
-        node_index    = node_index
-        node_number   = node_index + 1
-        subnet_index  = group.subnet_index != null ? group.subnet_index : (var.availability_zone_config == "dual_az" ? node_index % 2 : 0)
-        prefix        = group.hostname_prefix
-        node_name     = var.environment_name == "" ? "${group.hostname_prefix}-node${node_index + 1}" : "${var.environment_name}-${group.hostname_prefix}-node${node_index + 1}"
-        fqdn          = "${var.environment_name == "" ? "${group.hostname_prefix}-node${node_index + 1}" : "${var.environment_name}-${group.hostname_prefix}-node${node_index + 1}"}.${var.domain_name}"
-        instance_type = group.instance_type
-        image_channel = group.image_channel != null ? group.image_channel : var.image_channel
-        image_id = group.image_id != null && trimspace(group.image_id) != "" ? trimspace(group.image_id) : (
-          group.image_channel != null ? try(local.image_catalog.aws[group.image_channel][data.aws_region.current.region], "") : (
-            trimspace(var.aws.image_id) != "" ? trimspace(var.aws.image_id) : lookup(var.aws.image_ids, data.aws_region.current.region, try(local.image_catalog.aws[var.image_channel][data.aws_region.current.region], ""))
-          )
-        )
+        key                                  = "${group_key}-${format("%02d", node_index + 1)}"
+        workload_type                        = group.role
+        input_key                            = group_key
+        node_index                           = node_index
+        node_number                          = node_index + 1
+        subnet_index                         = group.subnet_index != null ? group.subnet_index : (var.availability_zone_config == "dual_az" ? node_index % 2 : 0)
+        prefix                               = group.hostname_prefix
+        node_name                            = var.environment_name == "" ? "${group.hostname_prefix}-node${node_index + 1}" : "${var.environment_name}-${group.hostname_prefix}-node${node_index + 1}"
+        fqdn                                 = "${var.environment_name == "" ? "${group.hostname_prefix}-node${node_index + 1}" : "${var.environment_name}-${group.hostname_prefix}-node${node_index + 1}"}.${var.domain_name}"
+        instance_type                        = group.instance_type
+        image_channel                        = group.image_channel != null ? group.image_channel : var.image_channel
+        image_id                             = group.image_id != null && trimspace(group.image_id) != "" ? trimspace(group.image_id) : local.resolved_image_ids_by_channel[group.image_channel != null ? group.image_channel : var.image_channel]
         root_volume_gb                       = group.root_volume_gb
         private_ips_per_eni                  = group.private_ips_per_node
         elastic_ips_per_node                 = var.deployment_mode == "public_cloud" ? group.elastic_ips_per_node : 0
@@ -138,6 +154,7 @@ locals {
         role                                 = group.role
         subnet_tier                          = group.subnet_tier
         purchase_option                      = group.purchase_option != null ? group.purchase_option : var.aws.purchase_option
+        instance_create_timeout              = group.instance_create_timeout
         source_dest_check                    = group.source_dest_check
         metadata_http_put_response_hop_limit = group.metadata_http_put_response_hop_limit != null ? group.metadata_http_put_response_hop_limit : var.aws.metadata_http_put_response_hop_limit
         security_profile                     = group.security_profile
@@ -166,7 +183,7 @@ locals {
       fqdn                                 = node.fqdn != null ? node.fqdn : "${node.node_name != null ? node.node_name : node_key}.${var.domain_name}"
       instance_type                        = node.instance_type
       image_channel                        = node.image_channel != null ? node.image_channel : var.image_channel
-      image_id                             = node.image_id != null && trimspace(node.image_id) != "" ? trimspace(node.image_id) : (node.image_channel != null ? try(local.image_catalog.aws[node.image_channel][data.aws_region.current.region], "") : (trimspace(var.aws.image_id) != "" ? trimspace(var.aws.image_id) : lookup(var.aws.image_ids, data.aws_region.current.region, try(local.image_catalog.aws[var.image_channel][data.aws_region.current.region], ""))))
+      image_id                             = node.image_id != null && trimspace(node.image_id) != "" ? trimspace(node.image_id) : local.resolved_image_ids_by_channel[node.image_channel != null ? node.image_channel : var.image_channel]
       root_volume_gb                       = node.root_volume_gb
       private_ips_per_eni                  = length(node.private_ips)
       elastic_ips_per_node                 = var.deployment_mode == "public_cloud" ? node.elastic_ips_per_node : 0
@@ -174,6 +191,7 @@ locals {
       role                                 = node.role
       subnet_tier                          = node.subnet_tier
       purchase_option                      = node.purchase_option != null ? node.purchase_option : var.aws.purchase_option
+      instance_create_timeout              = node.instance_create_timeout
       source_dest_check                    = node.source_dest_check
       metadata_http_put_response_hop_limit = node.metadata_http_put_response_hop_limit != null ? node.metadata_http_put_response_hop_limit : var.aws.metadata_http_put_response_hop_limit
       security_profile                     = node.security_profile
@@ -189,11 +207,17 @@ locals {
   node_records = {
     for node_key, node in local.combined_node_records : node_key => merge(node, {
       image_id = lookup(var.node_image_ids, node.key, node.image_id)
+      instance_create_timeout = lookup(
+        var.aws.node_instance_create_timeouts,
+        node_key,
+        node.instance_create_timeout != null ? node.instance_create_timeout : var.aws.instance_create_timeout
+      )
     })
   }
 
-  selected_instance_types = toset([
-    for _, node in local.node_records : node.instance_type
+  selected_image_ids = toset([
+    for _, node in local.node_records : trimspace(node.image_id)
+    if can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(node.image_id)))
   ])
 
   advanced_iam_profile_keys = toset([

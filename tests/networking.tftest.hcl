@@ -29,6 +29,13 @@ mock_provider "aws" {
     }
   }
 
+  mock_data "aws_ami" {
+    defaults = {
+      architecture = "x86_64"
+      state        = "available"
+    }
+  }
+
   mock_data "aws_vpc" {
     defaults = {
       cidr_block = "10.50.0.0/16"
@@ -50,6 +57,9 @@ variables {
   domain_name       = "example.com"
   registration_code = "ABCDEFGHIJKLMNOP"
   node_password     = "ZoomNode1!"
+  image_ids = {
+    prod = { us-west-2 = "ami-0a111111111111111" }
+  }
 
   source_cidrs = {
     remote_management_1 = ["192.0.2.10/32"]
@@ -107,6 +117,56 @@ run "plan_create_new_dual_az" {
   assert {
     condition     = local.node_records["meetings_hybrid-01"].subnet_index == 0 && local.node_records["meetings_hybrid-02"].subnet_index == 1
     error_message = "Dual-AZ workload nodes must be distributed across the two managed subnets."
+  }
+
+  assert {
+    condition     = length(data.aws_ec2_instance_type_offerings.selected) == 2
+    error_message = "One instance type spanning two Availability Zones must produce two exact-AZ offering checks."
+  }
+}
+
+run "reject_instance_type_missing_from_selected_az" {
+  command = plan
+
+  override_data {
+    target = data.aws_ec2_instance_type_offerings.selected["c6i.2xlarge|us-west-2b"]
+    values = { instance_types = [] }
+  }
+
+  variables {
+    availability_zone_config = "dual_az"
+    workloads = {
+      meetings_hybrid = {
+        enabled  = true
+        capacity = 500
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a", "us-west-2b"]
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "plan_deduplicated_exact_az_offering_lookup" {
+  command = plan
+
+  variables {
+    workloads = {
+      meetings_hybrid = {
+        enabled  = true
+        capacity = 500
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = length(data.aws_ec2_instance_type_offerings.selected) == 1
+    error_message = "Duplicate nodes sharing one instance type and Availability Zone must produce one offering lookup."
   }
 }
 

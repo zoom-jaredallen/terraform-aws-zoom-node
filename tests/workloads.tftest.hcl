@@ -28,6 +28,13 @@ mock_provider "aws" {
       instance_types = ["c6i.2xlarge", "c6i.xlarge", "g5.12xlarge", "g6.12xlarge", "m6i.6xlarge"]
     }
   }
+
+  mock_data "aws_ami" {
+    defaults = {
+      architecture = "x86_64"
+      state        = "available"
+    }
+  }
 }
 
 mock_provider "random" {}
@@ -37,6 +44,9 @@ variables {
   domain_name       = "example.com"
   registration_code = "ABCDEFGHIJKLMNOP"
   node_password     = "ZoomNode1!"
+  image_ids = {
+    prod = { us-west-2 = "ami-0a111111111111111" }
+  }
 
   source_cidrs = {
     remote_management_1 = ["192.0.2.10/32"]
@@ -206,8 +216,8 @@ run "plan_ai_services_g5_override" {
   }
 
   assert {
-    condition     = module.node.instances["ai_services-01"].ami == "ami-0d693e77e13176e99"
-    error_message = "The G5 AI Services override must retain the regional production AMI by default."
+    condition     = module.node.instances["ai_services-01"].ami == "ami-0a111111111111111"
+    error_message = "The G5 AI Services override must retain the customer's regional production AMI."
   }
 
   assert {

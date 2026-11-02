@@ -28,6 +28,13 @@ mock_provider "aws" {
       instance_types = ["c6i.2xlarge", "c6i.xlarge", "custom.xlarge", "m7i.2xlarge"]
     }
   }
+
+  mock_data "aws_ami" {
+    defaults = {
+      architecture = "x86_64"
+      state        = "available"
+    }
+  }
 }
 
 mock_provider "random" {}
@@ -37,6 +44,15 @@ variables {
   domain_name       = "example.com"
   registration_code = "ABCDEFGHIJKLMNOP"
   node_password     = "ZoomNode1!"
+
+  image_ids = {
+    prod = {
+      us-west-2 = "ami-0a111111111111111"
+    }
+    dev = {
+      us-west-2 = "ami-0b222222222222222"
+    }
+  }
 
   source_cidrs = {
     remote_management_1 = ["192.0.2.10/32"]
@@ -60,8 +76,8 @@ run "plan_prod_image_catalog" {
   }
 
   assert {
-    condition     = module.node.instances["meeting_survivability-01"].ami == "ami-0d693e77e13176e99"
-    error_message = "The production channel must resolve the regional production AMI catalog entry."
+    condition     = module.node.instances["meeting_survivability-01"].ami == "ami-0a111111111111111"
+    error_message = "The production channel must resolve the customer's regional production AMI."
   }
 }
 
@@ -82,8 +98,191 @@ run "plan_dev_image_catalog" {
   }
 
   assert {
-    condition     = module.node.instances["meeting_survivability-01"].ami == "ami-08254730bfaf2cb38"
-    error_message = "The development channel must resolve the regional development AMI catalog entry."
+    condition     = module.node.instances["meeting_survivability-01"].ami == "ami-0b222222222222222"
+    error_message = "The development channel must resolve the customer's regional development AMI."
+  }
+}
+
+run "reject_missing_customer_image" {
+  command = plan
+
+  variables {
+    image_ids = {}
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "plan_legacy_global_image_override" {
+  command = plan
+
+  variables {
+    image_ids = {}
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      image_id           = "ami-0c333333333333333"
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = module.node.instances["meeting_survivability-01"].ami == "ami-0c333333333333333"
+    error_message = "The existing aws.image_id compatibility override must remain functional."
+  }
+}
+
+run "plan_legacy_regional_image_override" {
+  command = plan
+
+  variables {
+    image_ids = {}
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      image_ids = {
+        us-west-2 = "ami-0d444444444444444"
+      }
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = module.node.instances["meeting_survivability-01"].ami == "ami-0d444444444444444"
+    error_message = "The existing aws.image_ids compatibility map must remain functional."
+  }
+}
+
+run "plan_workload_image_override_precedence" {
+  command = plan
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+        image_id   = "ami-0e555555555555555"
+      }
+    }
+    aws = {
+      image_id           = "ami-0f666666666666666"
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = module.node.instances["meeting_survivability-01"].ami == "ami-0e555555555555555"
+    error_message = "A workload image_id must take precedence over customer and legacy global images."
+  }
+}
+
+run "reject_malformed_resolved_image" {
+  command = plan
+
+  variables {
+    image_ids = {}
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      image_id           = "not-an-ami"
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_non_x86_64_image" {
+  command = plan
+
+  override_data {
+    target = data.aws_ami.selected
+    values = {
+      architecture = "arm64"
+      state        = "available"
+    }
+  }
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_unavailable_image" {
+  command = plan
+
+  override_data {
+    target = data.aws_ami.selected
+    values = {
+      architecture = "x86_64"
+      state        = "disabled"
+    }
+  }
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "plan_deduplicated_image_validation" {
+  command = plan
+
+  variables {
+    workloads = {
+      meetings_hybrid = {
+        enabled  = true
+        capacity = 500
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = length(data.aws_ami.selected) == 1
+    error_message = "Nodes sharing an AMI must produce one plan-time EC2 image lookup."
   }
 }
 
@@ -251,7 +450,7 @@ run "plan_per_node_overrides" {
   }
 
   assert {
-    condition     = module.node.instances["meetings_hybrid-01"].ami == "ami-0d693e77e13176e99" && module.node.instances["meetings_hybrid-02"].ami == "ami-07777777777777777"
+    condition     = module.node.instances["meetings_hybrid-01"].ami == "ami-0a111111111111111" && module.node.instances["meetings_hybrid-02"].ami == "ami-07777777777777777"
     error_message = "A stable-key AMI override must affect only the selected node."
   }
 
@@ -259,4 +458,104 @@ run "plan_per_node_overrides" {
     condition     = module.node.network_interfaces["meetings_hybrid-01"].source_dest_check && !module.node.network_interfaces["meetings_hybrid-02"].source_dest_check
     error_message = "A stable-key source/destination override must affect only the selected node."
   }
+}
+
+run "plan_instance_create_timeout_precedence" {
+  command = plan
+
+  variables {
+    node_groups = {
+      workers = {
+        count                   = 2
+        role                    = "kubernetes_worker"
+        hostname_prefix         = "worker"
+        instance_type           = "m7i.2xlarge"
+        image_id                = "ami-08888888888888888"
+        root_volume_gb          = 200
+        private_ip_start_offset = 20
+        subnet_tier             = "public"
+        security_profile        = "kubernetes_worker"
+        iam_profile_key         = "kubernetes"
+        instance_create_timeout = "7m"
+      }
+    }
+    aws = {
+      availability_zones      = ["us-west-2a"]
+      instance_create_timeout = "10m"
+      node_instance_create_timeouts = {
+        workers-02 = "3m"
+      }
+    }
+  }
+
+  assert {
+    condition     = module.node.instances["workers-01"].instance_create_timeout == "7m" && module.node.instances["workers-02"].instance_create_timeout == "3m"
+    error_message = "Group timeouts must override the global default and stable-node overrides must take highest precedence."
+  }
+
+  assert {
+    condition     = output.capacity_preflight_requests == [{ availability_zone = "us-west-2a", instance_count = 2, instance_type = "m7i.2xlarge", market_type = "on-demand", region = "us-west-2" }]
+    error_message = "The capacity manifest must group identical requests and contain only its five nonsensitive fields."
+  }
+}
+
+run "plan_default_instance_create_timeout" {
+  command = plan
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = module.node.instances["meeting_survivability-01"].instance_create_timeout == "10m"
+    error_message = "EC2 instance creation must default to a ten-minute timeout."
+  }
+}
+
+run "reject_malformed_instance_create_timeout" {
+  command = plan
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      availability_zones      = ["us-west-2a"]
+      instance_create_timeout = "soon"
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_unknown_instance_create_timeout_key" {
+  command = plan
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+      node_instance_create_timeouts = {
+        missing-01 = "5m"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
 }

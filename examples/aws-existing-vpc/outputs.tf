@@ -18,3 +18,8 @@ output "generated_node_password" {
   value       = module.zoom_node.generated_node_password
   sensitive   = true
 }
+
+output "capacity_preflight_requests" {
+  description = "Nonsensitive EC2 capacity requests for the planned nodes."
+  value       = module.zoom_node.capacity_preflight_requests
+}

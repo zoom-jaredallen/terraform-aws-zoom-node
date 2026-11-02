@@ -14,7 +14,7 @@
 
 - Both AI workers use `g5.12xlarge`, On-Demand, 500 GB EBS, one private IP, and no EIP.
 - Kubernetes master keeps `image_channel = "dev"`; production remains the default elsewhere.
-- `us-west-2` AMIs remain centralized in `image-catalog.json`: prod `ami-0d693e77e13176e99`, dev `ami-08254730bfaf2cb38`.
+- At the time of this historical deployment change, its private `us-west-2` production and development AMIs were selected through `image-catalog.json`; their IDs are now redacted from the reusable module repository.
 - The dedicated AI subnet must use a G5-supported AZ; `us-west-2d` is not supported.
 - No AWS resources are applied as part of this change.
 

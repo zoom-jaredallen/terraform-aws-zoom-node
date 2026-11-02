@@ -6,18 +6,27 @@ data "aws_servicequotas_service_quota" "ec2_elastic_ips" {
 data "aws_eips" "current" {}
 
 data "aws_ec2_instance_type_offerings" "selected" {
-  for_each = local.selected_instance_types
+  for_each = local.selected_instance_type_availability_zones
 
-  location_type = "region"
+  location_type = "availability-zone"
 
   filter {
     name   = "instance-type"
-    values = [each.value]
+    values = [each.value.instance_type]
   }
 
   filter {
     name   = "location"
-    values = [data.aws_region.current.region]
+    values = [each.value.availability_zone]
+  }
+}
+
+data "aws_ami" "selected" {
+  for_each = local.selected_image_ids
+
+  filter {
+    name   = "image-id"
+    values = [each.value]
   }
 }
 
@@ -61,6 +70,7 @@ locals {
       !contains(["public", "private"], group.subnet_tier) ? ["node_groups.${group_key} subnet_tier must be public or private."] : [],
       group.subnet_index != null && (group.subnet_index < 0 || floor(group.subnet_index) != group.subnet_index) ? ["node_groups.${group_key} subnet_index must be a non-negative integer."] : [],
       group.purchase_option != null && !contains(["on_demand", "spot"], group.purchase_option) ? ["node_groups.${group_key} purchase_option must be on_demand or spot."] : [],
+      group.instance_create_timeout != null && (trimspace(group.instance_create_timeout) == "" || !can(regex("^([0-9]+h)?([0-9]+m)?([0-9]+s)?$", group.instance_create_timeout))) ? ["node_groups.${group_key}.instance_create_timeout must be a Terraform duration such as 5m or 1h30m."] : [],
       group.image_channel != null && !contains(["prod", "dev"], group.image_channel) ? ["node_groups.${group_key} image_channel must be prod or dev."] : [],
       !contains(local.supported_advanced_security_profiles, group.security_profile) ? ["node_groups.${group_key} security_profile is not supported."] : [],
       group.image_id != null && trimspace(group.image_id) != "" && !can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(group.image_id))) ? ["node_groups.${group_key} image_id is not a valid AMI ID."] : []
@@ -90,6 +100,7 @@ locals {
       !contains(["public", "private"], node.subnet_tier) ? ["explicit_nodes.${node_key}.subnet_tier must be public or private."] : [],
       node.subnet_index != null && (node.subnet_index < 0 || floor(node.subnet_index) != node.subnet_index) ? ["explicit_nodes.${node_key}.subnet_index must be a non-negative integer."] : [],
       node.purchase_option != null && !contains(["on_demand", "spot"], node.purchase_option) ? ["explicit_nodes.${node_key}.purchase_option must be on_demand or spot."] : [],
+      node.instance_create_timeout != null && (trimspace(node.instance_create_timeout) == "" || !can(regex("^([0-9]+h)?([0-9]+m)?([0-9]+s)?$", node.instance_create_timeout))) ? ["explicit_nodes.${node_key}.instance_create_timeout must be a Terraform duration such as 5m or 1h30m."] : [],
       node.image_channel != null && !contains(["prod", "dev"], node.image_channel) ? ["explicit_nodes.${node_key}.image_channel must be prod or dev."] : [],
       node.image_id != null && trimspace(node.image_id) != "" && !can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(node.image_id))) ? ["explicit_nodes.${node_key}.image_id is not a valid AMI ID."] : [],
       node.security_profile == null && length(node.security_group_ids) == 0 ? ["explicit_nodes.${node_key} requires security_profile or security_group_ids."] : [],
@@ -147,10 +158,22 @@ locals {
   eip_quota           = floor(data.aws_servicequotas_service_quota.ec2_elastic_ips.value)
 
   instance_type_validation_errors = [
-    for instance_type, offerings in data.aws_ec2_instance_type_offerings.selected :
-    "EC2 instance type ${instance_type} is not offered in ${data.aws_region.current.region}. Choose another supported instance type or deploy in a region that supports it."
+    for pair_key, offerings in data.aws_ec2_instance_type_offerings.selected :
+    "EC2 instance type ${local.selected_instance_type_availability_zones[pair_key].instance_type} is not offered in Availability Zone ${local.selected_instance_type_availability_zones[pair_key].availability_zone}. Choose another Availability Zone or a compatible instance type."
     if length(offerings.instance_types) == 0
   ]
+
+  invalid_resolved_image_nodes = sort([
+    for node_key, node in local.node_records : node_key
+    if trimspace(node.image_id) != "" && !can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(node.image_id)))
+  ])
+
+  image_lookup_validation_errors = flatten([
+    for image_id, image in data.aws_ami.selected : concat(
+      image.state != "available" ? ["AMI ${image_id} is ${image.state}; it must be available in ${data.aws_region.current.region}."] : [],
+      image.architecture != "x86_64" ? ["AMI ${image_id} uses ${image.architecture}; Zoom Node requires x86_64."] : []
+    )
+  ])
 
   unknown_node_image_keys = sort(tolist(setsubtract(
     toset(keys(var.node_image_ids)),
@@ -170,6 +193,11 @@ locals {
 
   unknown_node_source_dest_check_keys = sort(tolist(setsubtract(
     toset(keys(var.aws.node_source_dest_check)),
+    toset(keys(local.node_records))
+  )))
+
+  unknown_node_instance_create_timeout_keys = sort(tolist(setsubtract(
+    toset(keys(var.aws.node_instance_create_timeouts)),
     toset(keys(local.node_records))
   )))
 
@@ -205,7 +233,7 @@ locals {
   validation_errors = concat(
     [
       for node_key, node in local.node_records :
-      "${node_key} requires an image_id override, an aws.image_ids entry, or a module image catalog entry for channel ${node.image_channel} in ${data.aws_region.current.region}."
+      "${node_key} requires a customer-accessible AMI for channel ${node.image_channel} in ${data.aws_region.current.region}. Set image_ids.${node.image_channel}[\"${data.aws_region.current.region}\"], an exact image_id override, aws.image_id, or the legacy aws.image_ids entry."
       if trimspace(node.image_id) == ""
     ],
     length(local.colliding_node_keys) > 0 ? [
@@ -217,8 +245,23 @@ locals {
     length(local.invalid_node_image_ids) > 0 ? [
       "node_image_ids contains invalid AMI IDs for: ${join(", ", local.invalid_node_image_ids)}."
     ] : [],
+    length(local.invalid_resolved_image_nodes) > 0 ? [
+      "Resolved image IDs are invalid for nodes: ${join(", ", local.invalid_resolved_image_nodes)}. Use an AMI ID such as ami-0123456789abcdef0."
+    ] : [],
     length(local.unknown_node_source_dest_check_keys) > 0 ? [
       "aws.node_source_dest_check contains unknown node keys: ${join(", ", local.unknown_node_source_dest_check_keys)}."
+    ] : [],
+    trimspace(var.aws.instance_create_timeout) == "" || !can(regex("^([0-9]+h)?([0-9]+m)?([0-9]+s)?$", var.aws.instance_create_timeout)) ? [
+      "aws.instance_create_timeout must be a Terraform duration such as 5m or 1h30m."
+    ] : [],
+    length([
+      for node_key, duration in var.aws.node_instance_create_timeouts : node_key
+      if trimspace(duration) == "" || !can(regex("^([0-9]+h)?([0-9]+m)?([0-9]+s)?$", duration))
+      ]) > 0 ? [
+      "aws.node_instance_create_timeouts values must be Terraform durations such as 5m or 1h30m."
+    ] : [],
+    length(local.unknown_node_instance_create_timeout_keys) > 0 ? [
+      "aws.node_instance_create_timeouts contains unknown node keys: ${join(", ", local.unknown_node_instance_create_timeout_keys)}."
     ] : [],
     length(local.unknown_security_group_egress_profile_keys) > 0 ? [
       "aws.security_group_egress_profiles contains unknown security profile keys: ${join(", ", local.unknown_security_group_egress_profile_keys)}."
@@ -303,6 +346,7 @@ locals {
     local.invalid_s3_bucket_access,
     local.network_interface_validation_errors,
     local.instance_type_validation_errors,
+    local.image_lookup_validation_errors,
     local.required_elastic_ips > 0 && local.current_elastic_ips + local.required_elastic_ips > local.eip_quota ? [
       "Elastic IP quota is insufficient: current usage ${local.current_elastic_ips}, required new Elastic IPs ${local.required_elastic_ips}, quota ${local.eip_quota}."
     ] : []

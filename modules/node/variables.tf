@@ -8,6 +8,7 @@ variable "node_records" {
     instance_type                        = string
     root_volume_gb                       = number
     purchase_option                      = string
+    instance_create_timeout              = string
     source_dest_check                    = bool
     metadata_http_put_response_hop_limit = number
     security_profile                     = string

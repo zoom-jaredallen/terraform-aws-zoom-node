@@ -13,8 +13,8 @@ Captured on 2026-10-27 using AWS account `626657815993`. Raw state and AWS respo
 
 | Node | Instance | ENI | Private IP | Type | AMI | Disk |
 |---|---|---|---|---|---|---:|
-| `jp01worker1-ap-northeast-1a` | `i-00a49f13565822610` | `eni-065f85abf6d31b1f7` | `10.2.101.241` | `g6.12xlarge` | `ami-0f31cf9510e341030` | 500 GB |
-| `jp01worker2-ap-northeast-1a` | `i-0c60e8a31ffffe302` | `eni-0a1b36feb73a60a5e` | `10.2.101.242` | `g6.2xlarge` | `ami-0f31cf9510e341030` | 500 GB |
+| `jp01worker1-ap-northeast-1a` | `i-00a49f13565822610` | `eni-065f85abf6d31b1f7` | `10.2.101.241` | `g6.12xlarge` | Customer AMI (redacted) | 500 GB |
+| `jp01worker2-ap-northeast-1a` | `i-0c60e8a31ffffe302` | `eni-0a1b36feb73a60a5e` | `10.2.101.242` | `g6.2xlarge` | Customer AMI (redacted) | 500 GB |
 
 Both ENIs use security group `sg-0b48e7ed7e0a5855e`. Neither instance has an IAM instance profile or EIP.
 
@@ -22,8 +22,8 @@ Both ENIs use security group `sg-0b48e7ed7e0a5855e`. Neither instance has an IAM
 
 | Node class | Nodes | Private IPs | Type | AMI | Disk |
 |---|---:|---|---|---|---:|
-| Control plane | 3 | `10.0.101.251-253` | `t3.xlarge` | `ami-0d60ba6c4adea94cf` | 500 GB |
-| Worker | 5 | `10.0.101.241-245` | `m7i.2xlarge` | `ami-0d60ba6c4adea94cf` | 500 GB |
+| Control plane | 3 | `10.0.101.251-253` | `t3.xlarge` | Customer AMI (redacted) | 500 GB |
+| Worker | 5 | `10.0.101.241-245` | `m7i.2xlarge` | Customer AMI (redacted) | 500 GB |
 
 All eight ENIs use security group `sg-0d9070fbb749a5ff4`. All instances use external IAM instance profile `ZoomNodeS3Access`. Exact instance and ENI IDs are retained in the ignored baseline files for post-migration comparison.
 

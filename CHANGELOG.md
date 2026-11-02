@@ -4,6 +4,22 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-03
+
+### Added
+
+- Customer-owned production and development AMI maps through the top-level `image_ids` input.
+- Plan-time validation that each distinct selected AMI is visible, available, and `x86_64` in the active AWS region.
+- A focused customer AMI catalog example and private-image onboarding guidance.
+- Configurable global, group, explicit-node, and stable-key EC2 create timeouts.
+- Exact Availability Zone instance-offering validation and a nonsensitive capacity request manifest.
+- An optional EC2 Capacity Manager preflight supporting saved Terraform plans, manual checks, mixed markets, CI score thresholds, and secure plan extraction.
+- Bounded AWS provider retries in maintained example roots.
+
+### Changed
+
+- Removed private Zoom AMI IDs from the reusable module catalog. Deployments upgrading to the next release must supply a customer-accessible AMI unless they already use an exact or legacy AWS image override.
+
 ## [0.3.0] - 2026-11-02
 
 ### Added

@@ -11,6 +11,40 @@ locals {
     )
   }
 
+  node_availability_zones = {
+    for node_key, node in local.node_records : node_key => (
+      node.subnet_tier == "private" ? local.effective_private_subnet_availability_zones[node.subnet_index] : local.effective_public_subnet_availability_zones[node.subnet_index]
+    )
+  }
+
+  selected_instance_type_availability_zone_keys = toset([
+    for node_key, node in local.node_records : "${node.instance_type}|${local.node_availability_zones[node_key]}"
+  ])
+
+  selected_instance_type_availability_zones = {
+    for pair_key in local.selected_instance_type_availability_zone_keys : pair_key => {
+      instance_type     = split("|", pair_key)[0]
+      availability_zone = split("|", pair_key)[1]
+    }
+  }
+
+  capacity_request_groups = {
+    for node_key, node in local.node_records :
+    "${data.aws_region.current.region}|${local.node_availability_zones[node_key]}|${node.instance_type}|${node.purchase_option}" => {
+      region            = data.aws_region.current.region
+      availability_zone = local.node_availability_zones[node_key]
+      instance_type     = node.instance_type
+      market_type       = node.purchase_option == "on_demand" ? "on-demand" : "spot"
+    }...
+  }
+
+  capacity_preflight_requests = [
+    for request_key in sort(keys(local.capacity_request_groups)) : merge(
+      local.capacity_request_groups[request_key][0],
+      { instance_count = length(local.capacity_request_groups[request_key]) }
+    )
+  ]
+
   node_subnet_prefix_lengths = {
     for node_key, cidr in local.node_subnet_cidrs : node_key => tonumber(split("/", cidr)[1])
   }

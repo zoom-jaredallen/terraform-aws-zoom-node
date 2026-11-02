@@ -1,0 +1,8 @@
+aws_region        = "us-west-2"
+aws_max_retries   = 5
+aws_retry_mode    = "standard"
+availability_zone = "us-west-2a"
+prod_ami_id       = "ami-REPLACE_WITH_CUSTOMER_ACCESSIBLE_PROD_IMAGE"
+dev_ami_id        = null
+image_channel     = "prod"
+registration_code = "REPLACE_WITH_FRESH_ZOOM_NODE_CODE"

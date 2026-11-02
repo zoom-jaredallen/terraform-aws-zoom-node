@@ -13,6 +13,7 @@ terraform validate
 ./scripts/check-test-contract-coverage.sh
 ./scripts/check-module-extraction.sh
 ./scripts/test-capture-deployment-baseline.sh
+./scripts/test-check-ec2-capacity.sh
 terraform test
 
 while IFS= read -r dir; do

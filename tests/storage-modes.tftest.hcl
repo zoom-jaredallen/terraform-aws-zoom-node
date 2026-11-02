@@ -28,6 +28,13 @@ mock_provider "aws" {
       instance_types = ["m6i.6xlarge", "t3.large"]
     }
   }
+
+  mock_data "aws_ami" {
+    defaults = {
+      architecture = "x86_64"
+      state        = "available"
+    }
+  }
 }
 
 mock_provider "random" {}
@@ -37,6 +44,9 @@ variables {
   domain_name       = "example.com"
   registration_code = "ABCDEFGHIJKLMNOP"
   node_password     = "ZoomNode1!"
+  image_ids = {
+    prod = { us-west-2 = "ami-0a111111111111111" }
+  }
 
   source_cidrs = {
     remote_management_1 = ["192.0.2.10/32"]

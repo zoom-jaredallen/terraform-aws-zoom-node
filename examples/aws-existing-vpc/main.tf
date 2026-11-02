@@ -8,6 +8,10 @@ module "zoom_node" {
   registration_code      = var.registration_code
   generate_node_password = true
 
+  image_ids = {
+    prod = { (var.aws_region) = var.prod_ami_id }
+  }
+
   source_cidrs = {
     zoom_clients        = ["0.0.0.0/0"]
     zoom_cloud          = ["0.0.0.0/0"]

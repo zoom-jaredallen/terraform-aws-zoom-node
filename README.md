@@ -18,6 +18,12 @@ module "zoom_node" {
   registration_code      = var.registration_code
   generate_node_password = true
 
+  image_ids = {
+    prod = {
+      us-west-2 = var.prod_ami_id
+    }
+  }
+
   source_cidrs = {
     remote_management_1 = ["203.0.113.10/32"]
     internal_traffic    = ["10.0.0.0/16"]
@@ -55,7 +61,7 @@ Supported in this MVP:
 - Optional customer-managed KMS keys, CloudWatch Logs retention, S3 versioning, and S3 lifecycle expiration
 - On-Demand instances by default, with opt-in Spot instances for disposable lab environments
 - One ENI per node with workload-specific private IP and Elastic IP counts
-- Plan-time validation for Zoom bootstrap values, management CIDRs, selected workload capacity, Elastic IP mapping, and regional Elastic IP quota
+- Plan-time validation for customer AMI visibility, Zoom bootstrap values, management CIDRs, selected workload capacity, Elastic IP mapping, and regional Elastic IP quota
 - Advanced heterogeneous node groups with per-group images, sizing, subnet tiers, Spot selection, IMDS settings, security profiles, and shared IAM profiles
 - Public and private subnet tiers with optional NAT Gateway egress
 - Bucket-scoped S3 access shared by one or more advanced IAM profiles
@@ -121,6 +127,12 @@ module "zoom_node" {
   registration_code = var.registration_code
   generate_node_password = true
 
+  image_ids = {
+    prod = {
+      us-west-2 = var.prod_ami_id
+    }
+  }
+
   source_cidrs = {
     zoom_clients        = ["0.0.0.0/0"]
     zoom_cloud          = ["0.0.0.0/0"]
@@ -158,25 +170,48 @@ Start with [`examples/aws-smoke-single-node`](examples/aws-smoke-single-node) wh
 
 The module reads the EC2 regional Elastic IP quota and existing EIP allocations during planning. Public cloud deployments fail early when the selected workloads need more Elastic IPs than the account can allocate in the target region.
 
-Default AWS AMIs live in `image-catalog.json`, grouped by `prod` and `dev` channel and then AWS region. `image_channel` defaults to `prod`. Select `dev` for an SSH-enabled development image; a missing image in the selected channel and region fails during planning rather than falling back to production. The repository does not ship placeholder AMI IDs, so populate the `dev` catalog with published regional images before selecting it.
+Zoom Node AMIs are not public AWS Marketplace images. Before planning, obtain an AMI that is visible to the target AWS account in every deployment region. The AMI may be copied into the customer account or explicitly shared with it; AMI IDs are regional and a copied image receives a different ID.
+
+The reusable module intentionally ships an empty `image-catalog.json`. Supply customer-accessible images through the top-level `image_ids` input, grouped by `prod` or `dev` channel and then AWS region. `image_channel` defaults to `prod`; select `dev` only for an SSH-enabled development image. Terraform queries every selected AMI during planning and rejects images that are not visible, not available, or not `x86_64`.
+
+```hcl
+image_ids = {
+  prod = {
+    us-west-2      = "ami-0123456789abcdef0"
+    ap-southeast-2 = "ami-0fedcba9876543210"
+  }
+  dev = {
+    us-west-2 = "ami-00112233445566778"
+  }
+}
+```
 
 AMI selection uses this precedence, from highest to lowest:
 
 1. `node_image_ids` entry keyed by the stable Terraform node key, such as `meetings_hybrid-01`.
 2. Workload-specific `image_id`.
-3. Global `aws.image_id`.
-4. Regional `aws.image_ids` entry.
-5. The selected `image_catalog.json` channel and AWS region.
+3. Customer `image_ids` entry for the node's channel and AWS region.
+4. Global `aws.image_id` compatibility override.
+5. Legacy regional `aws.image_ids` compatibility entry.
+6. The selected bundled `image-catalog.json` channel and AWS region, currently empty.
 
-For example, this selects development images generally while replacing one generated node with a specific AMI:
+For example, this selects the customer development image generally while replacing one generated node with a specific AMI:
 
 ```hcl
 image_channel = "dev"
+
+image_ids = {
+  dev = {
+    us-west-2 = "ami-00112233445566778"
+  }
+}
 
 node_image_ids = {
   meetings_hybrid-01 = "ami-0123456789abcdef0"
 }
 ```
+
+See [`examples/customer-ami-catalog`](examples/customer-ami-catalog) for a copyable customer-owned catalog. Existing `aws.image_id` and `aws.image_ids` configurations remain supported, but new deployments should use `image_ids` so production and development images can be managed independently.
 
 Workload sizing, capacity, storage, IP allocation, and provider instance recommendations live in `workload-catalog.json`. The module derives its AWS defaults from that catalog while keeping workload-specific Terraform overrides available for exceptional deployments.
 
@@ -199,6 +234,38 @@ aws = {
 Use `aws.instance_tags` for optional EC2-only tags. These tags are not applied to ENIs, security groups, log groups, storage, or networking resources. Module-generated identity tags such as `Name` and `ZoomNodeName` take precedence over custom values.
 
 `aws.purchase_option` defaults to `on_demand`. Set it to `spot` only for disposable development and test environments that can tolerate interruption. AWS can terminate a Spot instance with two minutes' notice. Terraform does not replace an interrupted node until the next apply, and a replacement Zoom Node may need a fresh registration code because registration codes expire. Spot pricing affects EC2 compute only; EBS volumes, public IPv4 addresses, snapshots, and data transfer retain their normal charges.
+
+### EC2 capacity failure handling
+
+The module validates that every selected instance type is offered in its exact Availability Zone. This catches unsupported type/AZ combinations during planning, but it does not prove that AWS has enough physical capacity for a launch.
+
+EC2 instance creation has a `10m` default timeout. Override `aws.instance_create_timeout`, an advanced group or explicit node's `instance_create_timeout`, or `aws.node_instance_create_timeouts[stable-node-key]`. Stable-node overrides take highest precedence. Executable roots own provider retries; the maintained examples default to `max_retries = 5` and `retry_mode = "standard"`. Callers can instead use `AWS_MAX_ATTEMPTS` and `AWS_RETRY_MODE` where editing the provider block is impractical.
+
+For a point-in-time capacity score, create a saved plan and pass it to the preflight script:
+
+```bash
+terraform plan -out=tfplan
+scripts/check-ec2-capacity.sh \
+  --terraform-plan tfplan \
+  --minimum-score medium
+terraform apply tfplan
+rm -f tfplan
+```
+
+The script reads the nonsensitive `capacity_preflight_requests` output from the saved plan, groups requests by market and node count, translates account-specific AZ names to stable AZ IDs, and reports `high`, `medium`, or `low`. Use `--capacity-manager-region` when Capacity Manager is enabled outside the deployment Region or the plan targets multiple Regions. Manual mode is also available:
+
+```bash
+scripts/check-ec2-capacity.sh \
+  --region us-west-2 \
+  --market-type on-demand \
+  --capacity 2 \
+  --availability-zone us-west-2b \
+  --instance-type g5.12xlarge
+```
+
+The check requires AWS CLI v2.39.1 or newer, `jq`, account-level EC2 Capacity Manager, and AWS Support Unified Operations for real-time supportability. Minimum IAM actions are `sts:GetCallerIdentity`, `ec2:DescribeAvailabilityZones`, `ec2:GetCapacityManagerAttributes`, and `ec2:GetCapacityManagerSupportabilityScores`. Scores are guidance, not reservations or launch guarantees. Proceed on `high`; for `medium` or `low`, add compatible instance types or AZs, reduce the request, or retry later. Do not publish score responses.
+
+Saved Terraform plans can contain the registration code, generated password, and rendered cloud-init even though the extracted capacity manifest is nonsensitive. Store plans with restricted permissions and delete them after review.
 
 Reserved Instances and Savings Plans are billing commitments applied to matching On-Demand usage, so they are not module deployment options. Capacity Reservations and Dedicated Hosts have separate placement and lifecycle requirements and are outside this MVP.
 
@@ -229,6 +296,7 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | ---- | ---- |
 | [random_password.node](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
 | [terraform_data.validation](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
+| [aws_ami.selected](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
 | [aws_ec2_instance_type_offerings.selected](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ec2_instance_type_offerings) | data source |
 | [aws_eips.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eips) | data source |
@@ -240,18 +308,19 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
 | availability\_zone\_config | Node placement model. | `string` | `"single_az"` | no |
-| aws | AWS-specific settings kept behind the portable Zoom Node interface. | <pre>object({<br/>    image_id                                                         = optional(string, "")<br/>    image_ids                                                        = optional(map(string), {})<br/>    key_name                                                         = optional(string, null)<br/>    vpc_cidr                                                         = optional(string, "10.0.0.0/16")<br/>    subnet_cidrs                                                     = optional(list(string), [])<br/>    public_subnet_cidrs                                              = optional(list(string), [])<br/>    private_subnet_cidrs                                             = optional(list(string), [])<br/>    create_nat_gateway                                               = optional(bool, false)<br/>    availability_zones                                               = optional(list(string), [])<br/>    existing_vpc_id                                                  = optional(string, "")<br/>    existing_subnet_ids                                              = optional(list(string), [])<br/>    subnet_newbits                                                   = optional(number, 8)<br/>    dns_servers                                                      = optional(list(string), [])<br/>    network_interface_name                                           = optional(string, "")<br/>    network_interface_names_by_instance_type                         = optional(map(string), {})<br/>    network_interface_names_by_instance_family                       = optional(map(string), {})<br/>    metadata_http_put_response_hop_limit                             = optional(number, 3)<br/>    node_source_dest_check                                           = optional(map(bool), {})<br/>    instance_tags                                                    = optional(map(string), {})<br/>    purchase_option                                                  = optional(string, "on_demand")<br/>    root_volume_encrypted                                            = optional(bool, true)<br/>    root_volume_kms_key_id                                           = optional(string, null)<br/>    cloudwatch_log_retention_days                                    = optional(number, 30)<br/>    cloudwatch_log_kms_key_id                                        = optional(string, null)<br/>    iam_path                                                         = optional(string, "/")<br/>    permissions_boundary                                             = optional(string, null)<br/>    enable_public_ipv4_on_boot                                       = optional(bool, false)<br/>    security_group_egress_profiles                                   = optional(map(string), {})<br/>    hybrid_recording_s3_actions                                      = optional(set(string), ["s3:*"])<br/>    hybrid_recording_s3_kms_key_arn                                  = optional(string, null)<br/>    hybrid_recording_s3_versioning_enabled                           = optional(bool, false)<br/>    hybrid_recording_s3_lifecycle_expiration_days                    = optional(number, null)<br/>    hybrid_recording_s3_lifecycle_noncurrent_version_expiration_days = optional(number, null)<br/>    s3_bucket_access = optional(map(object({<br/>      bucket_name                                  = string<br/>      mode                                         = optional(string, "use_existing")<br/>      iam_profile_keys                             = set(string)<br/>      actions                                      = optional(set(string), ["s3:*"])<br/>      kms_key_arn                                  = optional(string, null)<br/>      versioning_enabled                           = optional(bool, false)<br/>      lifecycle_expiration_days                    = optional(number, null)<br/>      lifecycle_noncurrent_version_expiration_days = optional(number, null)<br/>    })), {})<br/>  })</pre> | `{}` | no |
+| aws | AWS-specific settings kept behind the portable Zoom Node interface. | <pre>object({<br/>    image_id                                                         = optional(string, "")<br/>    image_ids                                                        = optional(map(string), {})<br/>    key_name                                                         = optional(string, null)<br/>    vpc_cidr                                                         = optional(string, "10.0.0.0/16")<br/>    subnet_cidrs                                                     = optional(list(string), [])<br/>    public_subnet_cidrs                                              = optional(list(string), [])<br/>    private_subnet_cidrs                                             = optional(list(string), [])<br/>    create_nat_gateway                                               = optional(bool, false)<br/>    availability_zones                                               = optional(list(string), [])<br/>    existing_vpc_id                                                  = optional(string, "")<br/>    existing_subnet_ids                                              = optional(list(string), [])<br/>    subnet_newbits                                                   = optional(number, 8)<br/>    dns_servers                                                      = optional(list(string), [])<br/>    network_interface_name                                           = optional(string, "")<br/>    network_interface_names_by_instance_type                         = optional(map(string), {})<br/>    network_interface_names_by_instance_family                       = optional(map(string), {})<br/>    metadata_http_put_response_hop_limit                             = optional(number, 3)<br/>    node_source_dest_check                                           = optional(map(bool), {})<br/>    instance_tags                                                    = optional(map(string), {})<br/>    purchase_option                                                  = optional(string, "on_demand")<br/>    instance_create_timeout                                          = optional(string, "10m")<br/>    node_instance_create_timeouts                                    = optional(map(string), {})<br/>    root_volume_encrypted                                            = optional(bool, true)<br/>    root_volume_kms_key_id                                           = optional(string, null)<br/>    cloudwatch_log_retention_days                                    = optional(number, 30)<br/>    cloudwatch_log_kms_key_id                                        = optional(string, null)<br/>    iam_path                                                         = optional(string, "/")<br/>    permissions_boundary                                             = optional(string, null)<br/>    enable_public_ipv4_on_boot                                       = optional(bool, false)<br/>    security_group_egress_profiles                                   = optional(map(string), {})<br/>    hybrid_recording_s3_actions                                      = optional(set(string), ["s3:*"])<br/>    hybrid_recording_s3_kms_key_arn                                  = optional(string, null)<br/>    hybrid_recording_s3_versioning_enabled                           = optional(bool, false)<br/>    hybrid_recording_s3_lifecycle_expiration_days                    = optional(number, null)<br/>    hybrid_recording_s3_lifecycle_noncurrent_version_expiration_days = optional(number, null)<br/>    s3_bucket_access = optional(map(object({<br/>      bucket_name                                  = string<br/>      mode                                         = optional(string, "use_existing")<br/>      iam_profile_keys                             = set(string)<br/>      actions                                      = optional(set(string), ["s3:*"])<br/>      kms_key_arn                                  = optional(string, null)<br/>      versioning_enabled                           = optional(bool, false)<br/>      lifecycle_expiration_days                    = optional(number, null)<br/>      lifecycle_noncurrent_version_expiration_days = optional(number, null)<br/>    })), {})<br/>  })</pre> | `{}` | no |
 | deployment\_mode | Zoom Node deployment mode. Use public\_cloud for direct public IPs or private\_cloud for private-only nodes. | `string` | `"public_cloud"` | no |
 | domain\_name | DNS domain appended to generated Zoom Node hostnames. | `string` | n/a | yes |
 | enable\_least\_privilege\_egress | Deprecated compatibility input. When true, standard workloads use workload\_specific egress unless aws.security\_group\_egress\_profiles sets an explicit profile. | `bool` | `false` | no |
 | environment\_name | Optional environment prefix for node names. | `string` | `""` | no |
-| explicit\_nodes | Exact Zoom Node inventory keyed by stable Terraform node identity. Use for adopting existing nodes or preserving exact hostnames and private IPs. | <pre>map(object({<br/>    node_name                            = optional(string, null)<br/>    fqdn                                 = optional(string, null)<br/>    role                                 = string<br/>    instance_type                        = string<br/>    image_channel                        = optional(string, null)<br/>    image_id                             = optional(string, null)<br/>    root_volume_gb                       = number<br/>    private_ips                          = list(string)<br/>    elastic_ips_per_node                 = optional(number, 0)<br/>    subnet_tier                          = string<br/>    subnet_index                         = optional(number, null)<br/>    purchase_option                      = optional(string, null)<br/>    source_dest_check                    = optional(bool, true)<br/>    metadata_http_put_response_hop_limit = optional(number, null)<br/>    security_profile                     = optional(string, null)<br/>    security_group_ids                   = optional(list(string), [])<br/>    iam_profile_key                      = optional(string, null)<br/>    iam_instance_profile_name            = optional(string, null)<br/>  }))</pre> | `{}` | no |
+| explicit\_nodes | Exact Zoom Node inventory keyed by stable Terraform node identity. Use for adopting existing nodes or preserving exact hostnames and private IPs. | <pre>map(object({<br/>    node_name                            = optional(string, null)<br/>    fqdn                                 = optional(string, null)<br/>    role                                 = string<br/>    instance_type                        = string<br/>    image_channel                        = optional(string, null)<br/>    image_id                             = optional(string, null)<br/>    root_volume_gb                       = number<br/>    private_ips                          = list(string)<br/>    elastic_ips_per_node                 = optional(number, 0)<br/>    subnet_tier                          = string<br/>    subnet_index                         = optional(number, null)<br/>    purchase_option                      = optional(string, null)<br/>    instance_create_timeout              = optional(string, null)<br/>    source_dest_check                    = optional(bool, true)<br/>    metadata_http_put_response_hop_limit = optional(number, null)<br/>    security_profile                     = optional(string, null)<br/>    security_group_ids                   = optional(list(string), [])<br/>    iam_profile_key                      = optional(string, null)<br/>    iam_instance_profile_name            = optional(string, null)<br/>  }))</pre> | `{}` | no |
 | generate\_node\_password | Generate a compliant 16-character Zoom Node password instead of accepting node\_password. | `bool` | `false` | no |
 | hybrid\_recording\_s3\_bucket\_mode | Use create\_new to create the Hybrid Recording bucket or use\_existing to grant access to an existing bucket. | `string` | `"use_existing"` | no |
 | hybrid\_recording\_s3\_bucket\_name | S3 bucket name used by Hybrid Recording. Required when Hybrid Recording is enabled. | `string` | `""` | no |
 | image\_channel | Image catalog channel. Use prod for hardened production images or dev for development images that support SSH access. | `string` | `"prod"` | no |
+| image\_ids | Customer-accessible Zoom Node AMI IDs by channel and AWS region. Zoom Node AMIs are private; populate the selected channel for every deployment region. | <pre>object({<br/>    prod = optional(map(string), {})<br/>    dev  = optional(map(string), {})<br/>  })</pre> | `{}` | no |
 | network\_mode | Network mode. Use create\_new to create a VPC/subnets or use\_existing to supply VPC/subnet IDs. | `string` | `"create_new"` | no |
-| node\_groups | Advanced heterogeneous Zoom Node groups. Use for infrastructure roles or lab topologies that do not follow workload capacity formulas. | <pre>map(object({<br/>    count                                = number<br/>    role                                 = string<br/>    hostname_prefix                      = string<br/>    instance_type                        = string<br/>    image_channel                        = optional(string, null)<br/>    image_id                             = optional(string, null)<br/>    root_volume_gb                       = number<br/>    private_ips_per_node                 = optional(number, 1)<br/>    elastic_ips_per_node                 = optional(number, 0)<br/>    private_ip_start_offset              = number<br/>    subnet_tier                          = string<br/>    subnet_index                         = optional(number, null)<br/>    purchase_option                      = optional(string, null)<br/>    source_dest_check                    = optional(bool, true)<br/>    metadata_http_put_response_hop_limit = optional(number, null)<br/>    security_profile                     = string<br/>    iam_profile_key                      = string<br/>  }))</pre> | `{}` | no |
+| node\_groups | Advanced heterogeneous Zoom Node groups. Use for infrastructure roles or lab topologies that do not follow workload capacity formulas. | <pre>map(object({<br/>    count                                = number<br/>    role                                 = string<br/>    hostname_prefix                      = string<br/>    instance_type                        = string<br/>    image_channel                        = optional(string, null)<br/>    image_id                             = optional(string, null)<br/>    root_volume_gb                       = number<br/>    private_ips_per_node                 = optional(number, 1)<br/>    elastic_ips_per_node                 = optional(number, 0)<br/>    private_ip_start_offset              = number<br/>    subnet_tier                          = string<br/>    subnet_index                         = optional(number, null)<br/>    purchase_option                      = optional(string, null)<br/>    instance_create_timeout              = optional(string, null)<br/>    source_dest_check                    = optional(bool, true)<br/>    metadata_http_put_response_hop_limit = optional(number, null)<br/>    security_profile                     = string<br/>    iam_profile_key                      = string<br/>  }))</pre> | `{}` | no |
 | node\_image\_ids | Optional AMI overrides keyed by stable Terraform node key, for example meetings\_hybrid-01. | `map(string)` | `{}` | no |
 | node\_password | Initial Zoom Node local administrator password used in bootstrap data. Required unless generate\_node\_password is true. | `string` | `null` | no |
 | registration\_code | Fresh Zoom Node registration code used in bootstrap data for newly created nodes. | `string` | n/a | yes |
@@ -263,6 +332,7 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 
 | Name | Description |
 | ---- | ----------- |
+| capacity\_preflight\_requests | Nonsensitive EC2 capacity requests resolved from the planned Zoom Node inventory. |
 | generated\_node\_password | Generated Zoom Node administrator password when generate\_node\_password is true; otherwise null. |
 | hybrid\_recording\_s3\_bucket\_name | Deprecated compatibility output. Use s3\_bucket\_names["hybrid\_recording"]. |
 | iam\_instance\_profile\_names | IAM instance profile name per workload or advanced profile key. |

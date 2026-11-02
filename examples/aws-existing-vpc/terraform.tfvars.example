@@ -1,4 +1,7 @@
 aws_region          = "us-west-2"
+aws_max_retries     = 5
+aws_retry_mode      = "standard"
 registration_code   = "REPLACE_WITH_FRESH_ZOOM_NODE_CODE"
+prod_ami_id         = "ami-REPLACE_WITH_CUSTOMER_ACCESSIBLE_IMAGE"
 existing_vpc_id     = "vpc-0123456789abcdef0"
 existing_subnet_ids = ["subnet-0123456789abcdef0"]

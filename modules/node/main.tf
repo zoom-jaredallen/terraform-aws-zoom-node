@@ -92,6 +92,9 @@ resource "aws_instance" "zoom_node" {
     encrypted   = var.root_volume_encrypted
     kms_key_id  = var.root_volume_kms_key_id
   }
+  timeouts {
+    create = each.value.instance_create_timeout
+  }
   tags = merge(var.common_tags, var.instance_tags, {
     Name          = each.value.fqdn
     Workload      = each.value.workload_type

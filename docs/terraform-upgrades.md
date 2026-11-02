@@ -13,6 +13,30 @@ The following are compatibility guarantees within a major release:
 
 Always read `CHANGELOG.md`, back up remote state, run `terraform init -upgrade`, and review a saved plan before applying a module upgrade.
 
+## Customer-owned AMIs
+
+The reusable module no longer embeds private Zoom AMI IDs. Before upgrading to the first release containing the `image_ids` input, configure an AMI that is visible in the target AWS account and region:
+
+```hcl
+image_ids = {
+  prod = {
+    us-west-2 = "ami-0123456789abcdef0"
+  }
+}
+```
+
+Existing `aws.image_id`, `aws.image_ids`, workload, group, explicit-node, and `node_image_ids` overrides remain compatible. Adding `image_ids` with the same AMI already used by the deployment produces no instance change. Selecting a different AMI replaces affected instances and requires a fresh Zoom registration code.
+
+The AWS identity running Terraform must be able to call `ec2:DescribeImages` and see the selected AMI. For shared encrypted AMIs, ensure the customer account also has permission to use the backing KMS key. AMIs copied across accounts or regions receive new IDs.
+
+## Capacity handling upgrade
+
+The capacity-handling release adds exact-AZ instance offering checks, a default EC2 create timeout of `10m`, and a nonsensitive `capacity_preflight_requests` output. These additions do not change resource addresses or replace existing instances. Timeout-only changes affect future create operations.
+
+Provider retry policy remains owned by each executable root because child modules cannot configure a caller's AWS provider. Maintained roots use five retries in standard mode. Existing callers may adopt the same provider settings or the equivalent `AWS_MAX_ATTEMPTS` and `AWS_RETRY_MODE` environment variables without changing Terraform state.
+
+Before applying an upgrade, generate a saved plan and run `scripts/check-ec2-capacity.sh --terraform-plan tfplan`. The plan file itself remains sensitive and must be protected even though the script extracts only the five-field capacity manifest. Capacity Manager scores do not reserve capacity and must not be treated as a replacement for reviewing the Terraform plan.
+
 ## v0.2 deprecation period
 
 The `v0.2.x` line keeps the following compatibility inputs functional while emitting non-blocking Terraform check warnings. Migrate maintained configurations before upgrading to `v1.0.0`.

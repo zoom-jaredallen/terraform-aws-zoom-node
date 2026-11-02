@@ -18,6 +18,7 @@ output "instances" {
       metadata_http_tokens                 = one(instance.metadata_options).http_tokens
       metadata_http_put_response_hop_limit = one(instance.metadata_options).http_put_response_hop_limit
       market_type                          = try(one(instance.instance_market_options).market_type, null)
+      instance_create_timeout              = var.node_records[key].instance_create_timeout
       root_volume_size                     = one(instance.root_block_device).volume_size
       root_volume_kms_key_id               = one(instance.root_block_device).kms_key_id
     }

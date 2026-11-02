@@ -96,6 +96,25 @@ variable "image_channel" {
   }
 }
 
+variable "image_ids" {
+  type = object({
+    prod = optional(map(string), {})
+    dev  = optional(map(string), {})
+  })
+  default     = {}
+  description = "Customer-accessible Zoom Node AMI IDs by channel and AWS region. Zoom Node AMIs are private; populate the selected channel for every deployment region."
+
+  validation {
+    condition = alltrue(flatten([
+      for channel_images in [var.image_ids.prod, var.image_ids.dev] : [
+        for region, image_id in channel_images :
+        trimspace(region) != "" && can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(image_id)))
+      ]
+    ]))
+    error_message = "image_ids region keys must not be empty and values must be valid AMI IDs."
+  }
+}
+
 variable "node_image_ids" {
   type        = map(string)
   default     = {}
@@ -189,6 +208,7 @@ variable "node_groups" {
     subnet_tier                          = string
     subnet_index                         = optional(number, null)
     purchase_option                      = optional(string, null)
+    instance_create_timeout              = optional(string, null)
     source_dest_check                    = optional(bool, true)
     metadata_http_put_response_hop_limit = optional(number, null)
     security_profile                     = string
@@ -212,6 +232,7 @@ variable "explicit_nodes" {
     subnet_tier                          = string
     subnet_index                         = optional(number, null)
     purchase_option                      = optional(string, null)
+    instance_create_timeout              = optional(string, null)
     source_dest_check                    = optional(bool, true)
     metadata_http_put_response_hop_limit = optional(number, null)
     security_profile                     = optional(string, null)
@@ -259,6 +280,8 @@ variable "aws" {
     node_source_dest_check                                           = optional(map(bool), {})
     instance_tags                                                    = optional(map(string), {})
     purchase_option                                                  = optional(string, "on_demand")
+    instance_create_timeout                                          = optional(string, "10m")
+    node_instance_create_timeouts                                    = optional(map(string), {})
     root_volume_encrypted                                            = optional(bool, true)
     root_volume_kms_key_id                                           = optional(string, null)
     cloudwatch_log_retention_days                                    = optional(number, 30)

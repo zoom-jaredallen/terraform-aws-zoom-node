@@ -20,10 +20,24 @@ required_runs=(
   reject_static_ip_subnet_exhaustion
   plan_prod_image_catalog
   plan_dev_image_catalog
+  reject_missing_customer_image
+  plan_legacy_global_image_override
+  plan_legacy_regional_image_override
+  plan_workload_image_override_precedence
+  reject_malformed_resolved_image
+  reject_non_x86_64_image
+  reject_unavailable_image
+  plan_deduplicated_image_validation
   plan_catalog_nic_mappings
   plan_nic_mapping_overrides
   plan_global_nic_override
   plan_per_node_overrides
+  plan_instance_create_timeout_precedence
+  plan_default_instance_create_timeout
+  reject_malformed_instance_create_timeout
+  reject_unknown_instance_create_timeout_key
+  reject_instance_type_missing_from_selected_az
+  plan_deduplicated_exact_az_offering_lookup
   plan_hybrid_recording_create_new_bucket
   plan_hybrid_recording_use_existing_bucket
   plan_advanced_s3_bucket_modes
@@ -56,5 +70,36 @@ if ((${#missing_runs[@]} > 0)); then
   printf '  - %s\n' "${missing_runs[@]}" >&2
   exit 1
 fi
+
+if ! rg --quiet 'Zoom Node AMIs are not public AWS Marketplace images' README.md; then
+  echo "README must document the private Zoom Node AMI requirement." >&2
+  exit 1
+fi
+
+if rg --quiet 'ami-[0-9a-f]{17}' image-catalog.json; then
+  echo "The reusable image catalog must not contain private AMI IDs." >&2
+  exit 1
+fi
+
+if ! rg --quiet 'image_ids[[:space:]]*=' examples/customer-ami-catalog/main.tf; then
+  echo "The customer AMI catalog example is missing its image_ids configuration." >&2
+  exit 1
+fi
+
+for example_dir in examples/*; do
+  test -d "$example_dir" || continue
+  rg --quiet 'max_retries[[:space:]]*=[[:space:]]*var\.aws_max_retries' "$example_dir/providers.tf" || {
+    echo "$example_dir must configure provider max_retries." >&2
+    exit 1
+  }
+  rg --quiet 'retry_mode[[:space:]]*=[[:space:]]*var\.aws_retry_mode' "$example_dir/providers.tf" || {
+    echo "$example_dir must configure provider retry_mode." >&2
+    exit 1
+  }
+  rg --quiet 'output "capacity_preflight_requests"' "$example_dir/outputs.tf" || {
+    echo "$example_dir must forward capacity_preflight_requests." >&2
+    exit 1
+  }
+done
 
 printf 'All %d required Terraform contract runs are present.\n' "${#required_runs[@]}"

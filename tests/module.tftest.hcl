@@ -28,6 +28,13 @@ mock_provider "aws" {
       instance_types = ["c6i.2xlarge"]
     }
   }
+
+  mock_data "aws_ami" {
+    defaults = {
+      architecture = "x86_64"
+      state        = "available"
+    }
+  }
 }
 
 mock_provider "random" {}
