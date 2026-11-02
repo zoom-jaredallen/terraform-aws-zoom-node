@@ -1,0 +1,14 @@
+# Copy this file to local.auto.tfvars and replace the bootstrap values.
+aws_max_retries = 5
+aws_retry_mode  = "standard"
+aws_region             = "ap-southeast-1"
+environment_name       = "GovTech"
+vpc_id                 = "vpc-0e28828211b99d0c3"
+subnet_id              = "subnet-0e19465dd7a938a54"
+security_group_id      = "sg-0d9070fbb749a5ff4"
+iam_instance_profile   = "ZoomNodeS3Access"
+image_id               = "ami-0d60ba6c4adea94cf"
+root_volume_gb         = 500
+
+registration_code = "REPLACE_WITH_FRESH_16_CHARACTER_CODE"
+node_password    = "REPLACE_WITH_ZOOM_NODE_PASSWORD"

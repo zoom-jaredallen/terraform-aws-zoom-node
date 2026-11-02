@@ -4,3 +4,13 @@ misconfigurations:
       - storage.tf
     statement: Managed buckets use AWS-managed SSE-S3 by default and support opt-in customer-managed KMS keys.
     expired_at: 2027-01-31
+  - id: AWS-0104
+    paths:
+      - deployments/sydney-public-four-node-new-vpc/network.tf
+    statement: The adopted Zoom Node appliance security group requires unrestricted outbound access; ingress remains restricted to management and internal CIDRs.
+    expired_at: 2027-02-28
+  - id: AWS-0104
+    paths:
+      - deployments/tokyo-ai-services-explicit-node/network.tf
+    statement: The adopted AI Services appliance security group requires unrestricted outbound access; ingress remains restricted to management and Kubernetes CIDRs.
+    expired_at: 2027-02-28

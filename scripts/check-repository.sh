@@ -20,7 +20,7 @@ while IFS= read -r dir; do
   terraform -chdir="$dir" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$dir" validate
   tflint --config="$repo_root/.tflint.hcl" --chdir="$dir" --minimum-failure-severity=warning
-done < <(find examples -mindepth 1 -maxdepth 1 -type d | sort)
+done < <(find examples deployments -mindepth 1 -maxdepth 1 -type d | sort)
 
 trivy config --severity HIGH,CRITICAL --exit-code 1 --ignorefile .trivyignore.yaml .
 trivy fs --scanners secret --exit-code 1 .

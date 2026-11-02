@@ -4,6 +4,16 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+### Added
+
+- Maintained GovTech, Sydney, Tokyo, and US West deployment roots pinned to the immutable `v0.4.0` module release.
+- Capacity-preflight outputs and operator workflows for each maintained deployment.
+
+### Changed
+
+- Preserve the US West production and development AMIs through explicit customer-owned image inputs.
+- Validate deployment roots alongside examples in the repository release gate.
+
 ## [0.4.0] - 2026-11-03
 
 ### Added

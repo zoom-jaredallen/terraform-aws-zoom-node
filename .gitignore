@@ -6,8 +6,10 @@
 **/.terraform/
 .terraform.lock.hcl
 !examples/**/.terraform.lock.hcl
+!deployments/**/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
+tfplan
 *.tfplan
 *.plan
 **/local.auto.tfvars

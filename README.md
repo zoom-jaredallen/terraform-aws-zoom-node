@@ -9,7 +9,7 @@ An AWS-native Terraform module for deploying Zoom Node workloads.
 
 ```hcl
 module "zoom_node" {
-  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.1.0"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.0"
 
   environment_name       = "demo"
   domain_name            = "lab.example.com"
@@ -118,7 +118,7 @@ Customer-managed KMS key inputs reference externally managed keys. The caller is
 
 ```hcl
 module "zoom_node" {
-  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.1.0"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.0"
 
   environment_name  = "demo"
   domain_name       = "lab.example.com"
@@ -161,6 +161,8 @@ module "zoom_node" {
 ```
 
 ## Notes
+
+The [`deployments`](deployments) directory contains maintained, environment-specific executable roots. These configurations are intentionally tracked because they document stable node identities, network placement, and upgrade behavior. They consume immutable module tags rather than the repository working tree. Never commit their state, saved plans, `.terraform` directories, `.env` files, or `local.auto.tfvars`; the repository ignore rules cover these operational artifacts while retaining dependency lock files.
 
 Terraform stores rendered user data in state. Treat the state backend as sensitive because `registration_code` and `node_password` are rendered into cloud-init.
 

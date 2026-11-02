@@ -1,0 +1,20 @@
+# Copy this file to local.auto.tfvars and replace the bootstrap values.
+aws_max_retries = 5
+aws_retry_mode  = "standard"
+aws_region       = "ap-northeast-1"
+environment_name = "GovTech"
+vpc_id           = "vpc-02d47a4fc808c135f"
+subnet_id        = "subnet-0f6e34349960f80b0"
+image_id         = "ami-0f31cf9510e341030"
+instance_type    = "g6.12xlarge"
+node_name        = "jp01worker1-ap-northeast-1a"
+private_ip       = "10.2.101.241"
+additional_instance_type = "g6.2xlarge"
+additional_node_name     = "jp01worker2-ap-northeast-1a"
+additional_private_ip    = "10.2.101.242"
+management_cidr  = "10.0.0.0/8"
+kubernetes_cidr  = "10.0.0.0/8"
+root_volume_gb   = 500
+
+registration_code = "REPLACE_WITH_FRESH_16_CHARACTER_CODE"
+node_password    = "REPLACE_WITH_ZOOM_NODE_PASSWORD"
