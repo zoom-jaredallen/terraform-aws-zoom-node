@@ -15,6 +15,9 @@
     "c8i.4xlarge": {
       "network_interface_name": "enp39s0"
     },
+    "g5.12xlarge": {
+      "network_interface_name": "ens5"
+    },
     "g6.12xlarge": {
       "network_interface_name": "ens5"
     },

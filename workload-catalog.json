@@ -207,6 +207,7 @@
         "aws": {
           "instance_type": "g6.12xlarge",
           "supported_instance_types": [
+            "g5.12xlarge",
             "g6.12xlarge",
             "g7e.2xlarge"
           ]

@@ -25,7 +25,7 @@ mock_provider "aws" {
 
   mock_data "aws_ec2_instance_type_offerings" {
     defaults = {
-      instance_types = ["c6i.2xlarge", "c6i.xlarge", "g6.12xlarge", "m6i.6xlarge"]
+      instance_types = ["c6i.2xlarge", "c6i.xlarge", "g5.12xlarge", "g6.12xlarge", "m6i.6xlarge"]
     }
   }
 }
@@ -184,6 +184,35 @@ run "plan_ai_services_workload" {
   assert {
     condition     = length(module.node.network_interfaces["ai_services-01"].private_ips) == 1 && module.node.eip_count == 0
     error_message = "AI Services must default to one private IP and no public IPs."
+  }
+}
+
+run "plan_ai_services_g5_override" {
+  command = plan
+
+  variables {
+    workloads = {
+      ai_services = {
+        enabled       = true
+        node_count    = 1
+        instance_type = "g5.12xlarge"
+      }
+    }
+  }
+
+  assert {
+    condition     = module.node.instances["ai_services-01"].instance_type == "g5.12xlarge"
+    error_message = "AI Services must support g5.12xlarge as a four-A10G override."
+  }
+
+  assert {
+    condition     = module.node.instances["ai_services-01"].ami == "ami-0d693e77e13176e99"
+    error_message = "The G5 AI Services override must retain the regional production AMI by default."
+  }
+
+  assert {
+    condition     = strcontains(nonsensitive(base64decode(module.node.instances["ai_services-01"].user_data_base64)), "    ens5:")
+    error_message = "The g5.12xlarge catalog mapping must render ens5 in cloud-init."
   }
 }
 

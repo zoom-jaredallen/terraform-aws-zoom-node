@@ -4,6 +4,12 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-02
+
+### Added
+
+- Support `g5.12xlarge` as an AI Services override with an exact `ens5` cloud-init NIC mapping for four NVIDIA A10G GPUs.
+
 ## [0.2.1] - 2026-10-27
 
 ### Fixed

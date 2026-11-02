@@ -180,7 +180,7 @@ node_image_ids = {
 
 Workload sizing, capacity, storage, IP allocation, and provider instance recommendations live in `workload-catalog.json`. The module derives its AWS defaults from that catalog while keeping workload-specific Terraform overrides available for exceptional deployments.
 
-AI Services defaults to `g6.12xlarge` with a 500 GB root volume, one private IP, and no Elastic IPs. It also supports `g7e.2xlarge` as an override. The module validates selected EC2 instance types against the current AWS region during planning, because GPU-backed `g6` and `g7e` families are not available everywhere.
+AI Services defaults to `g6.12xlarge` with a 500 GB root volume, one private IP, and no Elastic IPs. It also supports `g5.12xlarge` for four NVIDIA A10G GPUs and `g7e.2xlarge` as overrides. The module validates selected EC2 instance types against the current AWS region during planning because GPU-backed families are not available in every region or Availability Zone. Confirm that the selected Zoom Node AMI contains a compatible NVIDIA driver before changing GPU generations.
 
 Cloud-init network interface names are selected by exact EC2 instance type from `instance-catalog.json`. Use `aws.network_interface_names_by_instance_type` to add or replace an exact mapping, the legacy `aws.network_interface_names_by_instance_family` override for a family-wide mapping, or `aws.network_interface_name` to force one interface name for all nodes. An unmapped instance type fails validation instead of silently defaulting to an interface that may not exist.
 
