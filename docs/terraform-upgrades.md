@@ -77,6 +77,22 @@ Review every plan for the `-/+` replacement marker. Common changes have these ex
 | S3 versioning or lifecycle policy | Updates bucket controls without replacing nodes. |
 | Registration code, password, or rendered user data | Existing instance bootstrap data is intentionally ignored after creation. |
 | Source/destination check | Updates the primary ENI in place; disable it only for nodes that require routing behavior such as kube-vip. |
+| Add or change `control_plane_virtual_ip` | New ENIs receive the address at creation. Existing ENIs preserve private-IP drift, so explicitly replace the owner instance and ENI after supplying fresh bootstrap credentials. |
+
+### Adding a VIP to an existing control-plane node
+
+The AWS module intentionally ignores ENI private-IP drift so adopted clusters and externally assigned addresses are not removed. Consequently, adding `control_plane_virtual_ip` does not silently mutate a running master. Supply a fresh registration code, save a replacement plan, and verify that only the selected owner instance and ENI are replaced:
+
+```bash
+terraform plan \
+  -replace='module.zoom_node.module.node.aws_instance.zoom_node["kubernetes_master-01"]' \
+  -replace='module.zoom_node.module.node.aws_network_interface.zoom_node["kubernetes_master-01"]' \
+  -out=tfplan
+
+terraform apply tfplan
+```
+
+The replacement ENI receives the normal bootstrap address plus the VIP. Cloud-init receives only the bootstrap address. Do not apply if the plan replaces any other node or shared network resource.
 
 ## State moves
 

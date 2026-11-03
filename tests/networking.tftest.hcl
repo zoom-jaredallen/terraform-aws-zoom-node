@@ -281,6 +281,245 @@ run "plan_global_spot_workloads" {
   }
 }
 
+run "plan_control_plane_virtual_ip_on_master_eni" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address        = "10.0.0.250"
+      owner_node_key = "control-01"
+    }
+    node_groups = {
+      control = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "control"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        elastic_ips_per_node    = 1
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = module.node.network_interfaces["control-01"].private_ips == toset(["10.0.0.10", "10.0.0.250"])
+    error_message = "The control-plane VIP must be assigned to the owner master's ENI."
+  }
+
+  assert {
+    condition     = !strcontains(nonsensitive(base64decode(module.node.instances["control-01"].user_data_base64)), "10.0.0.250")
+    error_message = "The control-plane VIP must not be rendered as a static cloud-init address."
+  }
+
+  assert {
+    condition     = local.node_eip_records["control-01-eip-0"].private_ip == "10.0.0.10"
+    error_message = "Elastic IP allocation must continue to target the node bootstrap address."
+  }
+
+  assert {
+    condition     = output.control_plane_virtual_ip.address == "10.0.0.250" && output.control_plane_virtual_ip.assignment_mode == "node" && output.control_plane_virtual_ip.owner_node_key == "control-01" && output.control_plane_virtual_ip.assigned
+    error_message = "The normalized control-plane endpoint must be exposed to callers."
+  }
+}
+
+run "reject_unsupported_control_plane_virtual_ip_mode" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address         = "10.0.0.250"
+      assignment_mode = "load_balancer"
+      owner_node_key  = "control-01"
+    }
+    node_groups = {
+      control = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "control"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_unknown_control_plane_virtual_ip_owner" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address        = "10.0.0.250"
+      owner_node_key = "missing-01"
+    }
+    node_groups = {
+      control = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "control"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_non_master_control_plane_virtual_ip_owner" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address        = "10.0.0.250"
+      owner_node_key = "worker-01"
+    }
+    node_groups = {
+      worker = {
+        count                   = 1
+        role                    = "kubernetes_worker"
+        hostname_prefix         = "worker"
+        instance_type           = "t3.large"
+        root_volume_gb          = 200
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_worker"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_control_plane_virtual_ip_with_source_dest_check" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address        = "10.0.0.250"
+      owner_node_key = "control-01"
+    }
+    node_groups = {
+      control = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "control"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = true
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_control_plane_virtual_ip_outside_owner_subnet" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address        = "10.1.0.250"
+      owner_node_key = "control-01"
+    }
+    node_groups = {
+      control = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "control"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_reserved_control_plane_virtual_ip" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address        = "10.0.0.2"
+      owner_node_key = "control-01"
+    }
+    node_groups = {
+      control = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "control"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "reject_overlapping_control_plane_virtual_ip" {
+  command = plan
+
+  variables {
+    control_plane_virtual_ip = {
+      address        = "10.0.0.10"
+      owner_node_key = "control-01"
+    }
+    node_groups = {
+      control = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "control"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
 run "reject_overlapping_static_ip_ranges" {
   command = plan
 

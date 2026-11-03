@@ -45,7 +45,7 @@ module "node" {
 
   node_records                  = local.node_records
   node_subnet_ids               = local.node_subnet_ids
-  node_private_ips              = local.node_private_ips
+  node_private_ips              = local.node_eni_private_ips
   node_user_data                = local.node_user_data
   node_eip_records              = local.node_eip_records
   security_group_configs        = local.security_group_configs

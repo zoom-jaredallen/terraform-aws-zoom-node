@@ -16,6 +16,14 @@ required_runs=(
   plan_use_existing_network
   plan_private_nodes_with_nat_gateway
   plan_global_spot_workloads
+  plan_control_plane_virtual_ip_on_master_eni
+  reject_unsupported_control_plane_virtual_ip_mode
+  reject_unknown_control_plane_virtual_ip_owner
+  reject_non_master_control_plane_virtual_ip_owner
+  reject_control_plane_virtual_ip_with_source_dest_check
+  reject_control_plane_virtual_ip_outside_owner_subnet
+  reject_reserved_control_plane_virtual_ip
+  reject_overlapping_control_plane_virtual_ip
   reject_overlapping_static_ip_ranges
   reject_static_ip_subnet_exhaustion
   plan_prod_image_catalog

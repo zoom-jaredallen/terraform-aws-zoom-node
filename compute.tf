@@ -58,6 +58,27 @@ locals {
     )
   }
 
+  normalized_control_plane_virtual_ip = var.control_plane_virtual_ip == null ? null : {
+    address         = trimspace(var.control_plane_virtual_ip.address)
+    assignment_mode = trimspace(var.control_plane_virtual_ip.assignment_mode)
+    owner_node_key  = trimspace(var.control_plane_virtual_ip.owner_node_key)
+  }
+
+  control_plane_virtual_ip_address_valid = var.control_plane_virtual_ip != null && can(regex(
+    "^([0-9]{1,3}\\.){3}[0-9]{1,3}$",
+    trimspace(var.control_plane_virtual_ip.address)
+  )) && try(cidrhost("${trimspace(var.control_plane_virtual_ip.address)}/32", 0) == trimspace(var.control_plane_virtual_ip.address), false)
+
+  node_eni_private_ips = {
+    for node_key, private_ips in local.node_private_ips : node_key => concat(
+      private_ips,
+      var.control_plane_virtual_ip != null &&
+      local.control_plane_virtual_ip_address_valid &&
+      local.normalized_control_plane_virtual_ip.assignment_mode == "node" &&
+      local.normalized_control_plane_virtual_ip.owner_node_key == node_key ? [local.normalized_control_plane_virtual_ip.address] : []
+    )
+  }
+
   node_user_data = {
     for node_key, node in local.node_records : node_key => templatefile("${path.module}/templates/cloud-init.tftpl", {
       hostname               = node.fqdn

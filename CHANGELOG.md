@@ -4,6 +4,11 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+### Added
+
+- Add a provider-neutral `control_plane_virtual_ip` contract that assigns a kube-vip address to a selected Kubernetes master's AWS ENI without rendering it into cloud-init or Elastic IP allocation.
+- Reserve an assignment-mode extension point for a future load-balancer frontend, health-checked control-plane targets, and provider-specific implementations.
+
 ### Fixed
 
 - Render `enp39s0` for supported AWS G6 instance types after verification on a `g6.12xlarge` Zoom Node appliance.

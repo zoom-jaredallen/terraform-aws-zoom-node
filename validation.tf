@@ -50,9 +50,66 @@ locals {
 
   node_ip_allocations = flatten([
     for node_key, node in local.node_records : [
-      for ip in local.node_private_ips[node_key] : "${node.subnet_tier}:${node.subnet_index}:${ip}"
+      for ip in local.node_eni_private_ips[node_key] : "${node.subnet_tier}:${node.subnet_index}:${ip}"
     ]
   ])
+
+  control_plane_virtual_ip_owner_exists = var.control_plane_virtual_ip != null && contains(
+    keys(local.node_records),
+    local.normalized_control_plane_virtual_ip.owner_node_key
+  )
+  control_plane_virtual_ip_owner_subnet_cidr = try(
+    local.node_subnet_cidrs[local.normalized_control_plane_virtual_ip.owner_node_key],
+    null
+  )
+  control_plane_virtual_ip_address_number = try(sum([
+    for octet_index, octet in split(".", local.normalized_control_plane_virtual_ip.address) :
+    tonumber(octet) * pow(256, 3 - octet_index)
+  ]), null)
+  control_plane_virtual_ip_subnet_first = try(sum([
+    for octet_index, octet in split(".", cidrhost(local.control_plane_virtual_ip_owner_subnet_cidr, 0)) :
+    tonumber(octet) * pow(256, 3 - octet_index)
+  ]), null)
+  control_plane_virtual_ip_subnet_last = try(sum([
+    for octet_index, octet in split(".", cidrhost(local.control_plane_virtual_ip_owner_subnet_cidr, -1)) :
+    tonumber(octet) * pow(256, 3 - octet_index)
+  ]), null)
+  control_plane_virtual_ip_in_owner_subnet = try(
+    local.control_plane_virtual_ip_address_number >= local.control_plane_virtual_ip_subnet_first &&
+    local.control_plane_virtual_ip_address_number <= local.control_plane_virtual_ip_subnet_last,
+    false
+  )
+  control_plane_virtual_ip_is_usable = try(
+    local.control_plane_virtual_ip_address_number > local.control_plane_virtual_ip_subnet_first + 3 &&
+    local.control_plane_virtual_ip_address_number < local.control_plane_virtual_ip_subnet_last,
+    false
+  )
+  control_plane_virtual_ip_validation_errors = var.control_plane_virtual_ip == null ? [] : concat(
+    local.normalized_control_plane_virtual_ip.assignment_mode != "node" ? [
+      "control_plane_virtual_ip.assignment_mode must be node; load_balancer is reserved for a future release."
+    ] : [],
+    !local.control_plane_virtual_ip_address_valid ? [
+      "control_plane_virtual_ip.address must be a valid IPv4 address."
+    ] : [],
+    !local.control_plane_virtual_ip_owner_exists ? [
+      "control_plane_virtual_ip.owner_node_key must identify an existing node."
+    ] : [],
+    local.control_plane_virtual_ip_owner_exists && try(local.node_records[local.normalized_control_plane_virtual_ip.owner_node_key].role, "") != "kubernetes_master" ? [
+      "control_plane_virtual_ip.owner_node_key must identify a kubernetes_master node."
+    ] : [],
+    local.control_plane_virtual_ip_owner_exists && try(local.node_records[local.normalized_control_plane_virtual_ip.owner_node_key].source_dest_check, false) ? [
+      "control_plane_virtual_ip requires source_dest_check=false on its owner node."
+    ] : [],
+    local.control_plane_virtual_ip_address_valid && local.control_plane_virtual_ip_owner_exists && !local.control_plane_virtual_ip_in_owner_subnet ? [
+      "control_plane_virtual_ip.address must be inside the owner node's selected subnet."
+    ] : [],
+    local.control_plane_virtual_ip_address_valid && local.control_plane_virtual_ip_owner_exists && local.control_plane_virtual_ip_in_owner_subnet && !local.control_plane_virtual_ip_is_usable ? [
+      "control_plane_virtual_ip.address must not use an AWS-reserved subnet address."
+    ] : [],
+    local.control_plane_virtual_ip_address_valid && contains(flatten(values(local.node_private_ips)), local.normalized_control_plane_virtual_ip.address) ? [
+      "control_plane_virtual_ip.address overlaps a node bootstrap private IP."
+    ] : []
+  )
 
   advanced_ip_range_validation_errors = [
     for group_key, group in var.node_groups :
@@ -343,6 +400,7 @@ locals {
     local.advanced_node_group_validation_errors,
     local.advanced_ip_range_validation_errors,
     local.explicit_node_validation_errors,
+    local.control_plane_virtual_ip_validation_errors,
     local.invalid_s3_bucket_access,
     local.network_interface_validation_errors,
     local.instance_type_validation_errors,

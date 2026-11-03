@@ -60,8 +60,22 @@ output "node_fqdns" {
 }
 
 output "node_private_ips" {
-  description = "Private IPv4 addresses by node key."
+  description = "Bootstrap private IPv4 addresses by node key. Control-plane virtual IPs are exposed separately."
   value       = local.node_private_ips
+}
+
+output "control_plane_virtual_ip" {
+  description = "Configured provider-neutral control-plane virtual IP, intended owner interface, and observed assignment status."
+  value = local.normalized_control_plane_virtual_ip == null ? null : {
+    address              = local.normalized_control_plane_virtual_ip.address
+    assignment_mode      = local.normalized_control_plane_virtual_ip.assignment_mode
+    owner_node_key       = local.normalized_control_plane_virtual_ip.owner_node_key
+    network_interface_id = try(module.node.network_interfaces[local.normalized_control_plane_virtual_ip.owner_node_key].id, null)
+    assigned = try(contains(
+      module.node.network_interfaces[local.normalized_control_plane_virtual_ip.owner_node_key].private_ips,
+      local.normalized_control_plane_virtual_ip.address
+    ), false)
+  }
 }
 
 output "node_public_ips" {

@@ -36,6 +36,17 @@ variable "network_mode" {
   }
 }
 
+variable "control_plane_virtual_ip" {
+  description = "Optional provider-neutral control-plane virtual IP. The node assignment mode places the address on one control-plane node's provider network interface."
+  type = object({
+    address         = string
+    assignment_mode = optional(string, "node")
+    owner_node_key  = string
+  })
+  default  = null
+  nullable = true
+}
+
 variable "availability_zone_config" {
   type        = string
   default     = "single_az"

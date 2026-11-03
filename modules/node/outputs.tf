@@ -26,7 +26,7 @@ output "instances" {
 }
 output "network_interfaces" {
   value = { for key, eni in aws_network_interface.zoom_node : key => {
-    subnet_id = eni.subnet_id, private_ips = eni.private_ips, source_dest_check = eni.source_dest_check, security_groups = eni.security_groups
+    id = eni.id, subnet_id = eni.subnet_id, private_ips = eni.private_ips, source_dest_check = eni.source_dest_check, security_groups = eni.security_groups
   } }
 }
 output "log_groups" { value = { for key, group in aws_cloudwatch_log_group.zoom_node : key => { retention_in_days = group.retention_in_days, kms_key_id = group.kms_key_id } } }

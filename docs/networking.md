@@ -29,6 +29,24 @@ In public mode, EIPs are associated with the first N private addresses on each E
 
 Elastic IPs belong to individual node keys. Reducing counts or renaming nodes releases the affected addresses.
 
+## Control-plane virtual IP
+
+Configure a provider-neutral control-plane VIP for kube-vip with an address and stable owner node key:
+
+```hcl
+control_plane_virtual_ip = {
+  address         = "10.20.0.250"
+  assignment_mode = "node"
+  owner_node_key  = "kubernetes_master-01"
+}
+```
+
+The owner must be a `kubernetes_master`, use the same subnet as the VIP, and set `source_dest_check = false`. Terraform rejects malformed, AWS-reserved, out-of-subnet, and overlapping addresses.
+
+On AWS, the module adds the VIP to the owner's primary ENI but does not render it into cloud-init or associate an Elastic IP with it. Kube-vip owns the address inside the guest. AWS does not move a private address between ENIs in response to gratuitous ARP, so this mode does not provide reliable cross-master failover.
+
+The portable `assignment_mode` field is reserved for future provider implementations. A later `load_balancer` mode can assign frontend addresses to a managed load balancer, register control-plane nodes as backends, and route only to nodes passing a configured health check.
+
 ## DNS and interface names
 
 The module generates FQDNs but does not create DNS records. Configure the resulting public or private addresses in the caller's DNS system.

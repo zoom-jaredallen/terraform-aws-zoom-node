@@ -260,15 +260,16 @@ Cloud-init network interface names are selected by exact EC2 instance type from 
 
 EC2 instances enforce IMDSv2 and use an HTTP PUT response hop limit of `3` by default. Override `aws.metadata_http_put_response_hop_limit` only when the guest networking model requires another AWS-supported value from 1 through 64.
 
-Source/destination checking defaults to `true`. Kubernetes control-plane nodes that host a kube-vip virtual IP can disable it by stable Terraform node key:
+Source/destination checking defaults to `true`. Kubernetes control-plane nodes that host a kube-vip virtual IP must disable it. The provider-neutral endpoint input assigns the VIP to the selected node's provider network interface while keeping it out of static cloud-init networking:
 
 ```hcl
-aws = {
-  node_source_dest_check = {
-    meetings_hybrid-01 = false
-  }
+control_plane_virtual_ip = {
+  address        = "10.20.0.250"
+  owner_node_key = "kubernetes_master-01"
 }
 ```
+
+The selected advanced or explicit master must set `source_dest_check = false`. `assignment_mode` defaults to `node`. A future release can add a `load_balancer` mode with master targets and health checks; this release does not create a load balancer or provide AWS-native kube-vip failover. New or replaced ENIs receive the VIP during creation. Existing ENIs retain external private addresses by design, so adding the input to a running deployment requires an explicit owner-node replacement; see [Terraform Upgrades](docs/terraform-upgrades.md). The `control_plane_virtual_ip` output reports `assigned = false` until the provider resource actually contains the address.
 
 Use `aws.instance_tags` for optional EC2-only tags. These tags are not applied to ENIs, security groups, log groups, storage, or networking resources. Module-generated identity tags such as `Name` and `ZoomNodeName` take precedence over custom values.
 
@@ -350,6 +351,7 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | ---- | ----------- | ---- | ------- | :------: |
 | availability\_zone\_config | Node placement model. | `string` | `"single_az"` | no |
 | aws | AWS-specific settings kept behind the portable Zoom Node interface. | <pre>object({<br/>    image_id                                                         = optional(string, "")<br/>    image_ids                                                        = optional(map(string), {})<br/>    key_name                                                         = optional(string, null)<br/>    vpc_cidr                                                         = optional(string, "10.0.0.0/16")<br/>    subnet_cidrs                                                     = optional(list(string), [])<br/>    public_subnet_cidrs                                              = optional(list(string), [])<br/>    private_subnet_cidrs                                             = optional(list(string), [])<br/>    create_nat_gateway                                               = optional(bool, false)<br/>    availability_zones                                               = optional(list(string), [])<br/>    existing_vpc_id                                                  = optional(string, "")<br/>    existing_subnet_ids                                              = optional(list(string), [])<br/>    subnet_newbits                                                   = optional(number, 8)<br/>    dns_servers                                                      = optional(list(string), [])<br/>    network_interface_name                                           = optional(string, "")<br/>    network_interface_names_by_instance_type                         = optional(map(string), {})<br/>    network_interface_names_by_instance_family                       = optional(map(string), {})<br/>    metadata_http_put_response_hop_limit                             = optional(number, 3)<br/>    node_source_dest_check                                           = optional(map(bool), {})<br/>    instance_tags                                                    = optional(map(string), {})<br/>    purchase_option                                                  = optional(string, "on_demand")<br/>    instance_create_timeout                                          = optional(string, "10m")<br/>    node_instance_create_timeouts                                    = optional(map(string), {})<br/>    root_volume_encrypted                                            = optional(bool, true)<br/>    root_volume_kms_key_id                                           = optional(string, null)<br/>    cloudwatch_log_retention_days                                    = optional(number, 30)<br/>    cloudwatch_log_kms_key_id                                        = optional(string, null)<br/>    iam_path                                                         = optional(string, "/")<br/>    permissions_boundary                                             = optional(string, null)<br/>    enable_public_ipv4_on_boot                                       = optional(bool, false)<br/>    security_group_egress_profiles                                   = optional(map(string), {})<br/>    hybrid_recording_s3_actions                                      = optional(set(string), ["s3:*"])<br/>    hybrid_recording_s3_kms_key_arn                                  = optional(string, null)<br/>    hybrid_recording_s3_versioning_enabled                           = optional(bool, false)<br/>    hybrid_recording_s3_lifecycle_expiration_days                    = optional(number, null)<br/>    hybrid_recording_s3_lifecycle_noncurrent_version_expiration_days = optional(number, null)<br/>    s3_bucket_access = optional(map(object({<br/>      bucket_name                                  = string<br/>      mode                                         = optional(string, "use_existing")<br/>      iam_profile_keys                             = set(string)<br/>      actions                                      = optional(set(string), ["s3:*"])<br/>      kms_key_arn                                  = optional(string, null)<br/>      versioning_enabled                           = optional(bool, false)<br/>      lifecycle_expiration_days                    = optional(number, null)<br/>      lifecycle_noncurrent_version_expiration_days = optional(number, null)<br/>    })), {})<br/>  })</pre> | `{}` | no |
+| control\_plane\_virtual\_ip | Optional provider-neutral control-plane virtual IP. The node assignment mode places the address on one control-plane node's provider network interface. | <pre>object({<br/>    address         = string<br/>    assignment_mode = optional(string, "node")<br/>    owner_node_key  = string<br/>  })</pre> | `null` | no |
 | deployment\_mode | Zoom Node deployment mode. Use public\_cloud for direct public IPs or private\_cloud for private-only nodes. | `string` | `"public_cloud"` | no |
 | domain\_name | DNS domain appended to generated Zoom Node hostnames. | `string` | n/a | yes |
 | enable\_least\_privilege\_egress | Deprecated compatibility input. When true, standard workloads use workload\_specific egress unless aws.security\_group\_egress\_profiles sets an explicit profile. | `bool` | `false` | no |
@@ -374,6 +376,7 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | Name | Description |
 | ---- | ----------- |
 | capacity\_preflight\_requests | Nonsensitive EC2 capacity requests resolved from the planned Zoom Node inventory. |
+| control\_plane\_virtual\_ip | Configured provider-neutral control-plane virtual IP, intended owner interface, and observed assignment status. |
 | generated\_node\_password | Generated Zoom Node administrator password when generate\_node\_password is true; otherwise null. |
 | hybrid\_recording\_s3\_bucket\_name | Deprecated compatibility output. Use s3\_bucket\_names["hybrid\_recording"]. |
 | iam\_instance\_profile\_names | IAM instance profile name per workload or advanced profile key. |
@@ -382,7 +385,7 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | nat\_gateway\_public\_ip | NAT Gateway Elastic IP when managed NAT egress is enabled. |
 | node\_fqdns | Zoom Node FQDNs by node key. |
 | node\_names | Zoom Node names by node key. |
-| node\_private\_ips | Private IPv4 addresses by node key. |
+| node\_private\_ips | Bootstrap private IPv4 addresses by node key. Control-plane virtual IPs are exposed separately. |
 | node\_public\_ips | Elastic public IPv4 addresses by node key. |
 | node\_purchase\_options | EC2 purchase option used by each Zoom Node. |
 | node\_roles | Role assigned to each normalized node. |
