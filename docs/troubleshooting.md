@@ -19,7 +19,9 @@ GPU types often have limited regional and zonal capacity. Do not repeatedly appl
 
 EC2 creation defaults to `10m`. Override the global timeout with `aws.instance_create_timeout`, a group/node timeout, or `aws.node_instance_create_timeouts[stable-key]`. A longer timeout does not create capacity.
 
-For a point-in-time score:
+The Capacity Manager preflight is optional and does not run as part of Terraform. Use it when Spot, GPU-backed, unusually large, multi-node, or single-AZ requests make current physical capacity a concern. Routine On-Demand deployments can skip it.
+
+For an optional point-in-time score:
 
 ```bash
 terraform plan -out=tfplan
@@ -27,7 +29,21 @@ capacity_check="/path/to/terraform-aws-zoom-node/scripts/check-ec2-capacity.sh"
 "$capacity_check" --terraform-plan tfplan --minimum-score medium
 ```
 
-Run the script from a local checkout of this module. It requires AWS CLI v2.39.1 or newer, `jq`, EC2 Capacity Manager, and AWS Support Unified Operations. `high`, `medium`, and `low` are supportability signals, not reservations or guarantees.
+Run the script from a local checkout of this module. It requires AWS CLI v2.39.1 or newer, `jq`, EC2 Capacity Manager, and AWS Support Unified Operations. See [Optional capacity preflight](prerequisites.md#optional-capacity-preflight) for the complete prerequisite list. `high`, `medium`, and `low` are supportability signals, not reservations or guarantees.
+
+Capacity Manager can be enabled in only one Region per account. Query the Region selected for the account, even when the Terraform plan targets another Region:
+
+```bash
+aws ec2 get-capacity-manager-attributes --region us-west-2
+```
+
+If AWS returns `CapacityManager.Disabled`, an authorized administrator can enable it in the chosen control-plane Region:
+
+```bash
+aws ec2 enable-capacity-manager --region us-west-2
+```
+
+Then pass that Region to the preflight script with `--capacity-manager-region us-west-2`. Initial historical-data ingestion can take several hours, but supportability scoring is still a point-in-time advisory and does not reserve capacity.
 
 ## Elastic IP quota appears incorrect
 

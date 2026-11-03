@@ -22,9 +22,10 @@ For a new or safely migrated deployment:
 ```bash
 terraform init -upgrade
 terraform plan -out=tfplan
+# Optional: useful for Spot, GPU, large, or AZ-constrained requests.
 ../../scripts/check-ec2-capacity.sh --terraform-plan tfplan
 # Review the saved plan before applying it.
 terraform apply tfplan
 ```
 
-Capacity Manager scores are point-in-time guidance and do not reserve EC2 capacity.
+The Capacity Manager preflight is optional and Terraform does not depend on it. Use it when Spot, GPU-backed, unusually large, multi-node, or single-AZ requests make current physical capacity a concern. It requires Capacity Manager and AWS Unified Operations; see [Optional capacity preflight](../docs/prerequisites.md#optional-capacity-preflight). Scores are point-in-time guidance and do not reserve or guarantee EC2 capacity.

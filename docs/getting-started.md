@@ -21,7 +21,7 @@ Pin the module to an immutable release tag:
 
 ```hcl
 module "zoom_node" {
-  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.0"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.1"
 
   domain_name            = "lab.example.com"
   registration_code      = var.registration_code
@@ -69,10 +69,11 @@ terraform init
 terraform fmt -check
 terraform validate
 terraform plan -out=tfplan
+# Optional: useful for Spot, GPU, large, or AZ-constrained requests.
 ../../scripts/check-ec2-capacity.sh --terraform-plan tfplan --minimum-score medium
 ```
 
-The capacity command is optional and requires the AWS prerequisites documented in [EC2 capacity handling](troubleshooting.md#ec2-capacity-and-create-timeouts). External caller roots must invoke the script from a local checkout of this module. It scores point-in-time supportability but does not reserve capacity.
+The capacity command is optional; skip it for routine plans or when the account does not meet the [optional capacity-preflight prerequisites](prerequisites.md#optional-capacity-preflight). It is intended for Spot, GPU-backed, unusually large, multi-node, or single-AZ requests where current physical capacity is a concern. External caller roots must invoke the script from a local checkout of this module. It scores point-in-time supportability but does not reserve capacity or guarantee launch success.
 
 Review the saved plan for:
 

@@ -1,5 +1,5 @@
 module "zoom_node" {
-  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.0"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.1"
 
   environment_name         = "labcluster"
   domain_name              = "lab.zoomdemos.com"
@@ -32,7 +32,7 @@ module "zoom_node" {
       elastic_ips_per_node                 = 5
       private_ip_start_offset              = 10
       subnet_tier                          = "public"
-      purchase_option                      = "spot"
+      purchase_option                      = "on_demand"
       source_dest_check                    = true
       metadata_http_put_response_hop_limit = 3
       security_profile                     = "meetings_hybrid"
@@ -49,7 +49,7 @@ module "zoom_node" {
       elastic_ips_per_node                 = 1
       private_ip_start_offset              = 20
       subnet_tier                          = "public"
-      purchase_option                      = "spot"
+      purchase_option                      = "on_demand"
       source_dest_check                    = false
       metadata_http_put_response_hop_limit = 3
       security_profile                     = "kubernetes_master"
@@ -66,7 +66,7 @@ module "zoom_node" {
       elastic_ips_per_node                 = 0
       private_ip_start_offset              = 30
       subnet_tier                          = "private"
-      purchase_option                      = "spot"
+      purchase_option                      = "on_demand"
       source_dest_check                    = true
       metadata_http_put_response_hop_limit = 3
       security_profile                     = "kubernetes_worker"

@@ -4,9 +4,11 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-03
+
 ### Added
 
-- Maintained GovTech, Sydney, Tokyo, and US West deployment roots pinned to the immutable `v0.4.0` module release.
+- Maintained GovTech, Sydney, Tokyo, and US West deployment roots pinned to the immutable `v0.4.1` module release.
 - Capacity-preflight outputs and operator workflows for each maintained deployment.
 - A deployment-scoped AWS AMI catalog with optional per-deployment production and development overrides.
 - Registry-style documentation covering prerequisites, getting started, architecture, workloads, networking, AMI management, security, troubleshooting, frequently asked questions, and publication readiness.
@@ -15,6 +17,14 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 - Preserve the US West production and development AMIs through explicit customer-owned image inputs.
 - Validate deployment roots alongside examples in the repository release gate.
+- Clarify that EC2 Capacity Manager preflight is optional, document its Spot and GPU capacity use cases, and list the Capacity Manager and Unified Operations prerequisites.
+- Report disabled Capacity Manager separately from IAM or Region failures in the preflight script.
+- Use On-Demand capacity for the US West Meetings Hybrid and Kubernetes deployment groups, and select `g6.12xlarge` for its AI Services group.
+
+### Fixed
+
+- Preserve each Terraform plan request's Availability Zone when batching Capacity Manager checks, preventing unrelated instance type and zone combinations from appearing in results.
+- Wait for an EC2 instance to finish creating before associating its Elastic IPs, preventing transient `IncorrectInstanceState` failures.
 
 ## [0.4.0] - 2026-11-03
 

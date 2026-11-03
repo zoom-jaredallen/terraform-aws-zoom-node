@@ -10,8 +10,11 @@ An AMI copied to another account or region receives a new ID. Terraform validate
 cp terraform.tfvars.example terraform.tfvars
 terraform init
 terraform plan -out=tfplan
+# Optional: use when current EC2 capacity is a concern.
 ../../scripts/check-ec2-capacity.sh --terraform-plan tfplan
 rm -f tfplan
 ```
+
+The Capacity Manager preflight is optional. It is intended for Spot, GPU-backed, unusually large, multi-node, or single-AZ requests and is not required to validate the AMI catalog. See [Optional capacity preflight](../../docs/prerequisites.md#optional-capacity-preflight) for its Unified Operations and Capacity Manager requirements.
 
 Planning creates no resources. Applying this example creates billable AWS infrastructure.

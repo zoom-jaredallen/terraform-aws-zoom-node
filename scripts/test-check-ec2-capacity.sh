@@ -39,6 +39,10 @@ if [[ "${1:-}" == "sts" && "${2:-}" == "get-caller-identity" ]]; then
   exit 0
 fi
 if [[ "${1:-}" == "ec2" && "${2:-}" == "get-capacity-manager-attributes" ]]; then
+  if [[ "${FAKE_ATTRIBUTES_ERROR:-}" == "disabled" ]]; then
+    echo "An error occurred (CapacityManager.Disabled) when calling the GetCapacityManagerAttributes operation: Capacity Manager isn't enabled for this account." >&2
+    exit 254
+  fi
   if [[ "${FAKE_ATTRIBUTES_ERROR:-}" == "true" ]]; then
     echo 'AccessDenied: not authorized' >&2
     exit 255
@@ -116,6 +120,17 @@ assert_contains "$(cat "$FAKE_AWS_LOG")" '--capacity-amount 2'
 assert_contains "$(cat "$FAKE_AWS_LOG")" '--market-type spot'
 assert_contains "$(cat "$FAKE_AWS_LOG")" 'get-capacity-manager-attributes --region us-west-2'
 
+export FAKE_PLAN_JSON='{"planned_values":{"outputs":{"capacity_preflight_requests":{"sensitive":false,"value":[{"region":"us-west-2","availability_zone":"us-west-2a","instance_type":"c8i-flex.2xlarge","market_type":"on-demand","instance_count":1},{"region":"us-west-2","availability_zone":"us-west-2b","instance_type":"g6.12xlarge","market_type":"on-demand","instance_count":1}]}}}}'
+: >"$FAKE_AWS_LOG"
+run_case 0 --terraform-plan "$plan_file" --capacity-manager-region us-west-2
+[[ "$(grep -c 'get-capacity-manager-supportability-scores' "$FAKE_AWS_LOG")" -eq 2 ]] || fail "plan requests in different Availability Zones were combined"
+zone_a_request="$(grep 'get-capacity-manager-supportability-scores.*usw2-az1' "$FAKE_AWS_LOG")"
+zone_b_request="$(grep 'get-capacity-manager-supportability-scores.*usw2-az2' "$FAKE_AWS_LOG")"
+assert_contains "$zone_a_request" 'c8i-flex.2xlarge'
+assert_not_contains "$zone_a_request" 'g6.12xlarge'
+assert_contains "$zone_b_request" 'g6.12xlarge'
+assert_not_contains "$zone_b_request" 'c8i-flex.2xlarge'
+
 run_case 64 --terraform-plan "$plan_file" --region us-west-2 --market-type on-demand --capacity 1 --availability-zone us-west-2a --instance-type g5.12xlarge
 assert_contains "$CASE_OUTPUT" 'mutually exclusive'
 
@@ -145,6 +160,11 @@ export FAKE_CAPACITY_MANAGER_STATUS=disabled
 run_case 3 --region us-west-2 --market-type on-demand --capacity 1 --availability-zone us-west-2a --instance-type g5.12xlarge
 assert_contains "$CASE_OUTPUT" 'not enabled'
 unset FAKE_CAPACITY_MANAGER_STATUS
+
+export FAKE_ATTRIBUTES_ERROR=disabled
+run_case 3 --region us-west-2 --market-type on-demand --capacity 1 --availability-zone us-west-2a --instance-type g5.12xlarge
+assert_contains "$CASE_OUTPUT" 'Capacity Manager is not enabled in us-west-2'
+unset FAKE_ATTRIBUTES_ERROR
 
 export FAKE_ATTRIBUTES_ERROR=true
 run_case 3 --region us-west-2 --market-type on-demand --capacity 1 --availability-zone us-west-2a --instance-type g5.12xlarge

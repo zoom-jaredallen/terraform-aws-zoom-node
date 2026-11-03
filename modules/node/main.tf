@@ -114,6 +114,6 @@ resource "aws_eip" "zoom_node" {
 resource "aws_eip_association" "zoom_node" {
   for_each             = var.node_eip_records
   allocation_id        = aws_eip.zoom_node[each.key].id
-  network_interface_id = aws_network_interface.zoom_node[each.value.node_key].id
+  network_interface_id = aws_instance.zoom_node[each.value.node_key].primary_network_interface_id
   private_ip_address   = each.value.private_ip
 }

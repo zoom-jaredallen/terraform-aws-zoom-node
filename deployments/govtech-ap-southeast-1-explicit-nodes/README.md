@@ -4,7 +4,7 @@ This deployment root creates three Kubernetes control-plane nodes and five worke
 
 The configuration was copied without Terraform state. Do not manage the existing environment from this path until its authoritative state has been migrated to a configured remote backend; see [`../README.md`](../README.md).
 
-It consumes the immutable standalone module release `v0.4.0` through exact `explicit_nodes`. Declarative moves preserve all eight EC2 instances, ENIs, and CloudWatch log groups while the existing security group and `ZoomNodeS3Access` IAM instance profile remain externally owned.
+It consumes the immutable standalone module release `v0.4.1` through exact `explicit_nodes`. Declarative moves preserve all eight EC2 instances, ENIs, and CloudWatch log groups while the existing security group and `ZoomNodeS3Access` IAM instance profile remain externally owned.
 
 Network interface names are loaded by exact EC2 instance type from the shared `zoom-node-aws` instance catalog. The current `t3.xlarge` nodes use `ens5`; `m7i.2xlarge` uses `enp39s0`.
 
@@ -47,11 +47,14 @@ set +a
 
 terraform init -upgrade
 terraform plan -out=.migration/govtech-v040.tfplan
+# Optional: use when current EC2 capacity is a concern.
 ../../scripts/check-ec2-capacity.sh --terraform-plan .migration/govtech-v040.tfplan
 terraform show -json .migration/govtech-v040.tfplan > .migration/govtech-v040-plan.json
 # Review the JSON plan and apply only when EC2/ENI replacement and deletion counts are zero.
 terraform apply .migration/govtech-v040.tfplan
 ```
+
+The preflight is optional and does not affect Terraform planning or migration. Use it for Spot, GPU-backed, unusually large, multi-node, or single-AZ requests. It requires Capacity Manager and AWS Unified Operations; see [Optional capacity preflight](../../docs/prerequisites.md#optional-capacity-preflight).
 
 ## Destroy
 

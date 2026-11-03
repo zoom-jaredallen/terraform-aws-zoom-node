@@ -35,7 +35,7 @@ Read [Prerequisites](docs/prerequisites.md) before the first plan. Terraform sta
 
 ```hcl
 module "zoom_node" {
-  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.0"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.1"
 
   environment_name       = "demo"
   domain_name            = "lab.example.com"
@@ -155,7 +155,7 @@ Customer-managed KMS key inputs reference externally managed keys. The caller is
 
 ```hcl
 module "zoom_node" {
-  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.0"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.1"
 
   environment_name  = "demo"
   domain_name       = "lab.example.com"
@@ -278,9 +278,11 @@ Use `aws.instance_tags` for optional EC2-only tags. These tags are not applied t
 
 The module validates that every selected instance type is offered in its exact Availability Zone. This catches unsupported type/AZ combinations during planning, but it does not prove that AWS has enough physical capacity for a launch.
 
+The Capacity Manager preflight is optional. Terraform planning and deployment do not depend on it. Use it when current physical capacity is a meaningful risk, especially for Spot fleets, GPU-backed instances, unusually large instance types, multiple identical nodes launched together, or deployments constrained to one Availability Zone. It is generally unnecessary for routine On-Demand deployments using common instance types.
+
 EC2 instance creation has a `10m` default timeout. Override `aws.instance_create_timeout`, an advanced group or explicit node's `instance_create_timeout`, or `aws.node_instance_create_timeouts[stable-node-key]`. Stable-node overrides take highest precedence. Executable roots own provider retries; the maintained examples default to `max_retries = 5` and `retry_mode = "standard"`. Callers can instead use `AWS_MAX_ATTEMPTS` and `AWS_RETRY_MODE` where editing the provider block is impractical.
 
-For a point-in-time capacity score, create a saved plan and pass it to the preflight script:
+To request an optional point-in-time capacity score, create a saved plan and pass it to the preflight script:
 
 ```bash
 terraform plan -out=tfplan
@@ -302,7 +304,7 @@ scripts/check-ec2-capacity.sh \
   --instance-type g5.12xlarge
 ```
 
-The check requires AWS CLI v2.39.1 or newer, `jq`, account-level EC2 Capacity Manager, and AWS Support Unified Operations for real-time supportability. Minimum IAM actions are `sts:GetCallerIdentity`, `ec2:DescribeAvailabilityZones`, `ec2:GetCapacityManagerAttributes`, and `ec2:GetCapacityManagerSupportabilityScores`. Scores are guidance, not reservations or launch guarantees. Proceed on `high`; for `medium` or `low`, add compatible instance types or AZs, reduce the request, or retry later. Do not publish score responses.
+The optional check requires AWS CLI v2.39.1 or newer, `jq`, account-level EC2 Capacity Manager enabled in one Region, and AWS Support Unified Operations for real-time supportability. Minimum IAM actions are `sts:GetCallerIdentity`, `ec2:DescribeAvailabilityZones`, `ec2:GetCapacityManagerAttributes`, and `ec2:GetCapacityManagerSupportabilityScores`. Scores are guidance, not reservations or launch guarantees. Proceed on `high`; for `medium` or `low`, add compatible instance types or AZs, reduce the request, or retry later. Do not publish score responses. See [Prerequisites](docs/prerequisites.md#optional-capacity-preflight) for setup.
 
 Saved Terraform plans can contain the registration code, generated password, and rendered cloud-init even though the extracted capacity manifest is nonsensitive. Store plans with restricted permissions and delete them after review.
 

@@ -1,5 +1,5 @@
 module "zoom_node" {
-  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.0"
+  source = "git::https://github.com/zoom-jaredallen/terraform-aws-zoom-node.git?ref=v0.4.1"
 
   environment_name         = local.environment
   domain_name              = "lab.zoomdemos.com"

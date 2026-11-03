@@ -112,6 +112,9 @@ fi
 
 aws sts get-caller-identity --output json >/dev/null 2>&1 || prerequisite_error "AWS authentication failed"
 if ! attributes="$(aws ec2 get-capacity-manager-attributes --region "$capacity_manager_region" --output json 2>&1)"; then
+  if [[ "$attributes" == *"CapacityManager.Disabled"* ]]; then
+    prerequisite_error "Capacity Manager is not enabled in $capacity_manager_region; enable it there or pass the Region where it is already enabled with --capacity-manager-region"
+  fi
   prerequisite_error "unable to read Capacity Manager attributes; check IAM permissions and the Capacity Manager Region"
 fi
 status="$(printf '%s' "$attributes" | jq -r '.CapacityManagerStatus // empty' 2>/dev/null || true)"
@@ -131,6 +134,11 @@ missing_zones="$(jq -r --argjson zones "$zone_map" '[.[] | select($zones[.region
 [[ -z "$missing_zones" ]] || usage_error "Availability Zones were not found for this account: $missing_zones"
 
 results='[]'
+if [[ -n "$terraform_plan" ]]; then
+  request_group_filter='sort_by(.region, .availability_zone, .market_type, .instance_count) | group_by([.region, .availability_zone, .market_type, .instance_count])[]'
+else
+  request_group_filter='sort_by(.market_type, .instance_count) | group_by([.market_type, .instance_count])[]'
+fi
 while IFS= read -r request_group; do
   market="$(printf '%s' "$request_group" | jq -r '.[0].market_type')"
   count="$(printf '%s' "$request_group" | jq -r '.[0].instance_count')"
@@ -156,7 +164,7 @@ while IFS= read -r request_group; do
     else error("malformed response") end
   ' 2>/dev/null)" || prerequisite_error "AWS returned a malformed supportability score response"
   results="$(jq -cn --argjson current "$results" --argjson item "$normalized" '$current + [$item]')"
-done < <(jq -c 'sort_by(.market_type, .instance_count) | group_by([.market_type, .instance_count])[]' "$manifest_file")
+done < <(jq -c "$request_group_filter" "$manifest_file")
 
 overall_score="$(printf '%s' "$results" | jq -r '[.[].aggregate_score, .[].scores[].score] | map(if . == "low" then 0 elif . == "medium" then 1 else 2 end) | min | if . == 0 then "low" elif . == 1 then "medium" else "high" end')"
 minimum_met="$(jq -nr --arg actual "$overall_score" --arg required "$minimum_score" 'def rank: if . == "low" then 0 elif . == "medium" then 1 else 2 end; ($actual | rank) >= ($required | rank)')"

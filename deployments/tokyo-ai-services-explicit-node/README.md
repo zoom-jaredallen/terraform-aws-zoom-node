@@ -4,7 +4,7 @@ This deployment root creates two GPU-backed Zoom AI Services nodes in the existi
 
 The configuration was copied without Terraform state. Do not manage the existing environment from this path until its authoritative state has been migrated to a configured remote backend; see [`../README.md`](../README.md).
 
-It consumes the immutable standalone module release `v0.4.0` through exact `explicit_nodes`. Declarative moves preserve the existing EC2 instances, ENIs, and CloudWatch log groups at their module addresses while the deployment-owned security group remains at its original root address.
+It consumes the immutable standalone module release `v0.4.1` through exact `explicit_nodes`. Declarative moves preserve the existing EC2 instances, ENIs, and CloudWatch log groups at their module addresses while the deployment-owned security group remains at its original root address.
 
 ## Resources
 
@@ -47,11 +47,14 @@ set +a
 
 terraform init -upgrade
 terraform plan -out=.migration/tokyo-v040.tfplan
+# Optional: recommended for constrained GPU capacity.
 ../../scripts/check-ec2-capacity.sh --terraform-plan .migration/tokyo-v040.tfplan
 terraform show -json .migration/tokyo-v040.tfplan > .migration/tokyo-v040-plan.json
 # Review the JSON plan and apply only when EC2/ENI replacement and deletion counts are zero.
 terraform apply .migration/tokyo-v040.tfplan
 ```
+
+The preflight is optional and does not affect Terraform planning or migration. It is recommended here because GPU instance capacity can be constrained by Region and Availability Zone. It requires Capacity Manager and AWS Unified Operations; see [Optional capacity preflight](../../docs/prerequisites.md#optional-capacity-preflight).
 
 ## Destroy
 

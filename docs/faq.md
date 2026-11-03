@@ -46,7 +46,9 @@ No. It outputs node FQDNs and addresses; the caller owns DNS zones and records.
 
 ## Can the module check EC2 capacity before apply?
 
-It checks exact-AZ instance offerings during plan. The optional `check-ec2-capacity.sh` script can query EC2 Capacity Manager and assign a supportability score from a saved plan. Neither method reserves capacity.
+It always checks exact-AZ instance offerings during plan. The separate `check-ec2-capacity.sh` preflight is optional and can query EC2 Capacity Manager for a point-in-time supportability score from a saved plan. It is most useful for Spot fleets, GPU-backed or unusually large instances, multi-node launches, and deployments constrained to one Availability Zone. Routine Terraform plans can skip it. Neither method reserves capacity or guarantees launch success.
+
+Real-time scoring requires Capacity Manager to be enabled and the account to have AWS Unified Operations. See [Optional capacity preflight](prerequisites.md#optional-capacity-preflight).
 
 ## Is the capacity script cross-platform?
 

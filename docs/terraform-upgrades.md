@@ -35,7 +35,7 @@ The capacity-handling release adds exact-AZ instance offering checks, a default 
 
 Provider retry policy remains owned by each executable root because child modules cannot configure a caller's AWS provider. Maintained roots use five retries in standard mode. Existing callers may adopt the same provider settings or the equivalent `AWS_MAX_ATTEMPTS` and `AWS_RETRY_MODE` environment variables without changing Terraform state.
 
-Before applying an upgrade, generate a saved plan and run `scripts/check-ec2-capacity.sh --terraform-plan tfplan`. The plan file itself remains sensitive and must be protected even though the script extracts only the five-field capacity manifest. Capacity Manager scores do not reserve capacity and must not be treated as a replacement for reviewing the Terraform plan.
+Before applying an upgrade, generate and review a saved plan. When the upgrade creates or replaces Spot, GPU-backed, unusually large, multi-node, or single-AZ capacity, you may optionally run `scripts/check-ec2-capacity.sh --terraform-plan tfplan`. The preflight is not required for an upgrade. The plan file itself remains sensitive and must be protected even though the script extracts only the five-field capacity manifest. Capacity Manager scores do not reserve capacity and must not be treated as a replacement for reviewing the Terraform plan.
 
 ## v0.2 deprecation period
 

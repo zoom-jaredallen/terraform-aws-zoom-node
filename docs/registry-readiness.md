@@ -10,7 +10,7 @@ This checklist tracks the module against HashiCorp's public module conventions. 
 | Repository name `terraform-<PROVIDER>-<NAME>` | Ready | `terraform-aws-zoom-node` |
 | One-sentence GitHub description | Ready | “Deploy Zoom Node workloads on AWS with Terraform.” |
 | Standard root module structure | Ready | Root `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`, README, examples, and tests |
-| Semantic-version release tag | Ready | Immutable tags through `v0.4.0` |
+| Semantic-version release tag | Ready | Immutable tags through `v0.4.1` |
 | Root README | Ready | Narrative usage plus generated requirements, providers, resources, inputs, and outputs |
 | License | Ready | Apache-2.0 |
 | Examples | Partial | New VPC, existing VPC, smoke, and customer AMI catalog roots exist, but use local module sources for repository testing |

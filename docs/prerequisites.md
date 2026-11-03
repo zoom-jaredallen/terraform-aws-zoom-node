@@ -13,6 +13,37 @@
 
 Maintainers also need `terraform-docs`, TFLint, and Trivy to run `./scripts/check-repository.sh`.
 
+## Optional capacity preflight
+
+The EC2 Capacity Manager preflight is optional. It is not required by `terraform plan`, `terraform apply`, or the module's built-in validation. Its purpose is to provide a point-in-time `high`, `medium`, or `low` supportability score when physical EC2 capacity is a material deployment risk.
+
+Consider using it for:
+
+- Spot Instance fleets;
+- GPU-backed instance types such as `g5`, `g6`, and `g7e`;
+- large or uncommon instance types;
+- multiple identical nodes launched together; or
+- deployments restricted to a single Availability Zone.
+
+The module always validates whether the selected instance type is offered in the exact Availability Zone. That static check does not prove current physical capacity. The optional preflight adds current supportability guidance, but it neither reserves capacity nor guarantees a later launch.
+
+The preflight requires all of the following:
+
+- AWS CLI v2.39.1 or newer and `jq`;
+- EC2 Capacity Manager enabled in exactly one account-level Region;
+- an AWS Unified Operations support plan for real-time supportability scores;
+- `sts:GetCallerIdentity`, `ec2:DescribeAvailabilityZones`, `ec2:GetCapacityManagerAttributes`, and `ec2:GetCapacityManagerSupportabilityScores` permissions; and
+- a saved Terraform plan containing the nonsensitive `capacity_preflight_requests` output.
+
+Check or enable Capacity Manager in the selected control-plane Region:
+
+```bash
+aws ec2 get-capacity-manager-attributes --region us-west-2
+aws ec2 enable-capacity-manager --region us-west-2
+```
+
+Capacity Manager is free to enable, but the real-time scoring API requires Unified Operations. Pass the enabled Region with `--capacity-manager-region` when it differs from the deployment Region. Initial historical-data ingestion can take several hours.
+
 ## AWS account and identity
 
 The deployment identity must be able to read account, Region, Availability Zone, instance-offering, AMI, VPC, subnet, Elastic IP, and Service Quotas information. Its create/update/delete permissions must cover the resources selected by the configuration:

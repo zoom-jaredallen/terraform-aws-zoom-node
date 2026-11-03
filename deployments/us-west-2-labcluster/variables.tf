@@ -89,8 +89,8 @@ variable "kubernetes_worker_instance_type" {
 
 variable "ai_services_instance_type" {
   type        = string
-  default     = "g5.12xlarge"
-  description = "EC2 instance type for the On-Demand AI Services nodes with four NVIDIA A10G GPUs."
+  default     = "g6.12xlarge"
+  description = "EC2 instance type for the On-Demand AI Services node with four NVIDIA L4 GPUs."
 }
 
 variable "registration_code" {
