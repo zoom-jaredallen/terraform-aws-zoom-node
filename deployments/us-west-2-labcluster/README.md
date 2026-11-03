@@ -6,7 +6,7 @@ This copied root intentionally contains no Terraform state; see [`../README.md`]
 
 The deployment is pinned to the immutable standalone module release `v0.4.0`. The source deployment's authoritative state was empty and no matching EC2 instances remained in AWS, so this root is classified as destroyed. Do not apply it unless recreating the lab is explicitly intended.
 
-Zoom Node AMIs are customer-owned inputs in `v0.4.0`. This root explicitly maps the production channel to `ami-0d693e77e13176e99` and the development channel to `ami-08254730bfaf2cb38` in `us-west-2`. The Kubernetes master selects the development channel; the Meetings Hybrid, Kubernetes worker, and AI Services groups select production.
+Zoom Node AMIs are customer-owned inputs in `v0.4.0`. This root resolves the production and development channels from [`../aws-ami-catalog.json`](../aws-ami-catalog.json) for `aws_region`. Optional `prod_ami_id` and `dev_ami_id` variables override the catalog for this deployment. The Kubernetes master selects the development channel; the Meetings Hybrid, Kubernetes worker, and AI Services groups select production.
 
 ## Before Planning
 

@@ -1,0 +1,8 @@
+{
+  "prod": {
+    "us-west-2": "ami-0d693e77e13176e99"
+  },
+  "dev": {
+    "us-west-2": "ami-08254730bfaf2cb38"
+  }
+}

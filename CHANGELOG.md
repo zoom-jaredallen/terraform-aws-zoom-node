@@ -8,6 +8,8 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 - Maintained GovTech, Sydney, Tokyo, and US West deployment roots pinned to the immutable `v0.4.0` module release.
 - Capacity-preflight outputs and operator workflows for each maintained deployment.
+- A deployment-scoped AWS AMI catalog with optional per-deployment production and development overrides.
+- Registry-style documentation covering prerequisites, getting started, architecture, workloads, networking, AMI management, security, troubleshooting, frequently asked questions, and publication readiness.
 
 ### Changed
 

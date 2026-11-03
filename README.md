@@ -5,6 +5,32 @@ An AWS-native Terraform module for deploying Zoom Node workloads.
 [![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.7-844FBA.svg)](https://www.terraform.io/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
+## Documentation
+
+| Guide | Purpose |
+|---|---|
+| [Getting started](docs/getting-started.md) | First plan, capacity preflight, apply, verification, and destroy |
+| [Prerequisites](docs/prerequisites.md) | AWS identity, private AMIs, quotas, networking, and tools |
+| [Architecture](docs/architecture.md) | Public facade, private implementation modules, catalogs, and ownership |
+| [Workloads](docs/workloads.md) | Supported workload defaults, capacity, sizing, and node interfaces |
+| [Networking](docs/networking.md) | VPC modes, subnets, IPs, EIPs, NAT, DNS, and traffic sources |
+| [AMI management](docs/ami-management.md) | Customer image channels, precedence, distribution, and updates |
+| [Security](docs/security.md) | State protection, firewall profiles, IAM, KMS, IMDSv2, and logs |
+| [Upgrading](docs/terraform-upgrades.md) | Compatibility guarantees, imports, moves, and replacement triggers |
+| [Troubleshooting](docs/troubleshooting.md) | Capacity, quota, bootstrap, registration, NFS, and state failures |
+| [FAQ](docs/faq.md) | Common design and operation questions |
+
+See the complete [documentation index](docs/README.md) and [Registry-readiness checklist](docs/registry-readiness.md).
+
+## Prerequisites
+
+- Terraform `>= 1.7.0`, AWS provider `>= 6.0`, and Random provider `>= 3.6`.
+- A private Zoom Node AMI visible in the target AWS account and Region.
+- A fresh Zoom Node registration code and either a compliant password or generated-password mode.
+- AWS quotas, subnets, routing, and management CIDRs sized for the selected workloads.
+
+Read [Prerequisites](docs/prerequisites.md) before the first plan. Terraform state and saved plans contain rendered bootstrap secrets and must be stored accordingly.
+
 ## Usage
 
 ```hcl
@@ -42,6 +68,17 @@ module "zoom_node" {
   }
 }
 ```
+
+## Examples
+
+| Example | Purpose |
+|---|---|
+| [Single-node smoke test](examples/aws-smoke-single-node) | Smallest live AWS validation |
+| [New VPC](examples/aws-new-vpc) | Module-managed network and multiple workloads |
+| [Existing VPC](examples/aws-existing-vpc) | Nodes deployed into caller-managed networking |
+| [Customer AMI catalog](examples/customer-ami-catalog) | Production/development image channels owned by the customer |
+
+Examples create billable AWS resources when applied. Copy their ignored local variable file, authenticate to the intended account, review a saved plan, and destroy short-lived tests when complete.
 
 ## Scope
 
@@ -355,3 +392,11 @@ For existing VPC deployments, this MVP still assigns deterministic private IPs s
 | vpc\_id | VPC used for the Zoom Node deployment. |
 | workload\_node\_counts | Calculated node count per enabled workload. |
 <!-- END_TF_DOCS -->
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Run `./scripts/check-repository.sh` before submitting a change.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

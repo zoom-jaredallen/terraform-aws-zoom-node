@@ -10,8 +10,8 @@ module "zoom_node" {
   generate_node_password   = true
 
   image_ids = {
-    prod = { (var.aws_region) = var.prod_ami_id }
-    dev  = { (var.aws_region) = var.dev_ami_id }
+    prod = local.effective_prod_ami_id != "" ? { (var.aws_region) = local.effective_prod_ami_id } : {}
+    dev  = local.effective_dev_ami_id != "" ? { (var.aws_region) = local.effective_dev_ami_id } : {}
   }
 
   source_cidrs = {

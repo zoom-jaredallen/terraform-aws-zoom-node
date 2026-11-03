@@ -14,18 +14,31 @@ terraform validate
 ./scripts/check-module-extraction.sh
 ./scripts/test-capture-deployment-baseline.sh
 ./scripts/test-check-ec2-capacity.sh
+./scripts/test-check-tracked-artifacts.sh
 terraform test
 
 while IFS= read -r dir; do
   terraform -chdir="$dir" init -backend=false -input=false -lockfile=readonly
   terraform -chdir="$dir" validate
   tflint --config="$repo_root/.tflint.hcl" --chdir="$dir" --minimum-failure-severity=warning
+  if [[ -d "$dir/tests" ]]; then
+    terraform -chdir="$dir" test
+  fi
 done < <(find examples deployments -mindepth 1 -maxdepth 1 -type d | sort)
 
-trivy config --severity HIGH,CRITICAL --exit-code 1 --ignorefile .trivyignore.yaml .
-trivy fs --scanners secret --exit-code 1 .
+trivy config --severity HIGH,CRITICAL --exit-code 1 --ignorefile .trivyignore.yaml --tf-exclude-downloaded-modules .
+trivy fs --scanners secret --exit-code 1 \
+  --skip-dirs '**/.terraform' \
+  --skip-dirs '**/.migration' \
+  --skip-files '.env' \
+  --skip-files '.env.*' \
+  --skip-files '*.tfstate' \
+  --skip-files '*.tfstate.*' \
+  --skip-files 'tfplan' \
+  --skip-files '*.tfplan' \
+  --skip-files '*.plan' \
+  --skip-files 'local.auto.tfvars' \
+  --skip-files '*.tfvars.local' \
+  .
 
-if find . -name .git -type d -prune -o -name .terraform -type d -prune -o -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '*.tfplan' -o -name '*.plan' -o -name 'local.auto.tfvars' -o -name '*.tfvars.local' -o -name '.env' -o \( -name '.env.*' ! -name '.env.example' \) \) -print | grep -q .; then
-  echo "Sensitive or local Terraform artifacts are present." >&2
-  exit 1
-fi
+./scripts/check-tracked-artifacts.sh

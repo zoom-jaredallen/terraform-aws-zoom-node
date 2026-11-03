@@ -4,11 +4,13 @@ aws_retry_mode  = "standard"
 # local.auto.tfvars is ignored by Git and loaded automatically by Terraform.
 
 aws_region        = "us-west-2"
-prod_ami_id       = "ami-0d693e77e13176e99"
-dev_ami_id        = "ami-08254730bfaf2cb38"
 availability_zone = "us-west-2a"
 ai_services_availability_zone = "us-west-2b"
 registration_code = "REPLACE_WITH_FRESH_16_CHARACTER_CODE"
+
+# Optional overrides for deployments/aws-ami-catalog.json:
+# prod_ami_id = "ami-0123456789abcdef0"
+# dev_ami_id  = "ami-0123456789abcdef0"
 
 management_cidrs = ["180.150.42.155/32"]
 s3_bucket_name   = "zoomnode-labcluster-s3"

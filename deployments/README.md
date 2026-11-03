@@ -15,6 +15,8 @@ The following files remain local and are ignored by Git:
 
 Dependency lockfiles and `terraform.tfvars.example` files are tracked. Never place live registration codes, node passwords, or AWS credentials in committed files.
 
+Customer-owned AMIs shared by maintained deployments are recorded by channel and Region in [`aws-ami-catalog.json`](aws-ami-catalog.json). Deployment variables may override a catalog value when testing a replacement image. The reusable module's own `image-catalog.json` remains empty so published releases do not assume access to private customer images.
+
 For a new or safely migrated deployment:
 
 ```bash

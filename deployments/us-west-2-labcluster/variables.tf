@@ -23,14 +23,26 @@ variable "aws_region" {
 
 variable "prod_ami_id" {
   type        = string
-  default     = "ami-0d693e77e13176e99"
-  description = "Customer-accessible production Zoom Node AMI in us-west-2."
+  default     = null
+  nullable    = true
+  description = "Optional production Zoom Node AMI override. When omitted, the deployment catalog is used for aws_region."
+
+  validation {
+    condition     = var.prod_ami_id == null ? true : can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(var.prod_ami_id)))
+    error_message = "prod_ami_id must be null or a valid AMI ID."
+  }
 }
 
 variable "dev_ami_id" {
   type        = string
-  default     = "ami-08254730bfaf2cb38"
-  description = "Customer-accessible development Zoom Node AMI in us-west-2."
+  default     = null
+  nullable    = true
+  description = "Optional development Zoom Node AMI override. When omitted, the deployment catalog is used for aws_region."
+
+  validation {
+    condition     = var.dev_ami_id == null ? true : can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(var.dev_ami_id)))
+    error_message = "dev_ami_id must be null or a valid AMI ID."
+  }
 }
 
 variable "availability_zone" {
