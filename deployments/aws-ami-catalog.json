@@ -1,8 +1,10 @@
 {
   "prod": {
+    "eu-west-3": "ami-08cee0fa6e0627954",
     "us-west-2": "ami-0d693e77e13176e99"
   },
   "dev": {
+    "eu-west-3": "ami-0c072623be8dbd841",
     "us-west-2": "ami-08254730bfaf2cb38"
   }
 }

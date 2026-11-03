@@ -4,6 +4,10 @@ All notable changes to this module are documented here. Releases follow Semantic
 
 ## [Unreleased]
 
+### Fixed
+
+- Render `enp39s0` for supported AWS G6 instance types after verification on a `g6.12xlarge` Zoom Node appliance.
+
 ## [0.4.1] - 2026-11-03
 
 ### Added

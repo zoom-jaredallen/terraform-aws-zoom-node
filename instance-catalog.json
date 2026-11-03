@@ -19,7 +19,7 @@
       "network_interface_name": "ens5"
     },
     "g6.12xlarge": {
-      "network_interface_name": "ens5"
+      "network_interface_name": "enp39s0"
     },
     "g6.2xlarge": {
       "network_interface_name": "enp39s0"

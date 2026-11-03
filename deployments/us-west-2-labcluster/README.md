@@ -1,6 +1,6 @@
 # US West 2 Lab Cluster
 
-This configuration defines, but does not automatically apply, an eight-node Zoom Node lab in `us-west-2`. It creates one Meetings Hybrid node, one Kubernetes master, five private Kubernetes workers, one private On-Demand AI Services node, a new VPC, one NAT Gateway, and the encrypted `zoomnode-labcluster-s3` bucket. Existing nodes use `us-west-2a`; the AI Services group uses a dedicated `10.20.2.0/24` private subnet in `us-west-2b`. Confirm current `g6.12xlarge` capacity before applying because GPU capacity is constrained by Availability Zone.
+This configuration defines, but does not automatically apply, an eight-node Zoom Node lab in `us-west-2`. It creates one Meetings Hybrid node, one Kubernetes master, five private Kubernetes workers, one private On-Demand AI Services node, a new VPC, one NAT Gateway, and the encrypted `zoomnode-labcluster-s3` bucket. CPU nodes use `us-west-2a`; the AI Services group uses a dedicated `10.20.2.0/24` private subnet in `us-west-2d`. Confirm current `g6.12xlarge` capacity before applying because GPU capacity is constrained by Availability Zone.
 
 This copied root intentionally contains no Terraform state; see [`../README.md`](../README.md). Its source deployment was already classified as destroyed, so a future apply is a new environment creation rather than an existing-state migration.
 
@@ -63,4 +63,4 @@ Bootstrap user data is immutable after an instance is created. Updating `registr
 
 All node groups use On-Demand capacity. The `g6.12xlarge` AI Services node provides four NVIDIA L4 GPUs, but launch capacity may not be available in every `us-west-2` Availability Zone.
 
-The single NAT Gateway and single Kubernetes master are intentional lab cost choices and single points of failure. Workers and AI Services nodes have no EIPs and no direct public ingress; outbound traffic uses the NAT Gateway, while application ingress is expected to route through the master. The AI Services subnet in `us-west-2b` uses the NAT Gateway in `us-west-2a`, which introduces cross-AZ data-processing charges. Terraform does not configure Kubernetes, kube-vip, IP forwarding, or application routing inside the appliances.
+The single NAT Gateway and Kubernetes master are intentional lab cost choices and single points of failure. Workers and AI Services nodes have no EIPs and no direct public ingress; outbound traffic uses the NAT Gateway, while application ingress is expected to route through the master. The AI Services subnet in `us-west-2d` uses the NAT Gateway in `us-west-2a`, which introduces cross-AZ data-processing charges. Terraform does not configure Kubernetes, kube-vip, IP forwarding, or application routing inside the appliances.

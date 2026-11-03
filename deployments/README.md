@@ -17,6 +17,14 @@ Dependency lockfiles and `terraform.tfvars.example` files are tracked. Never pla
 
 Customer-owned AMIs shared by maintained deployments are recorded by channel and Region in [`aws-ami-catalog.json`](aws-ami-catalog.json). Deployment variables may override a catalog value when testing a replacement image. The reusable module's own `image-catalog.json` remains empty so published releases do not assume access to private customer images.
 
+Maintained roots currently include:
+
+- `eu-west-3-paris-labcluster`: the active Paris eight-node lab using region-local AMI copies and an independent `10.30.0.0/16` VPC;
+- `us-west-2-labcluster`: the active US West lab cluster;
+- `tokyo-ai-services-explicit-node`: explicit Tokyo AI Services nodes;
+- `govtech-ap-southeast-1-explicit-nodes`: explicit Singapore nodes; and
+- `sydney-public-four-node-new-vpc`: the public Sydney four-node deployment.
+
 For a new or safely migrated deployment:
 
 ```bash

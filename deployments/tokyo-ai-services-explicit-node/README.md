@@ -10,7 +10,7 @@ It consumes the immutable standalone module release `v0.4.1` through exact `expl
 
 | Hostname | Instance type | Network interface | Private IP | Root volume | Elastic IPs |
 | --- | --- | --- | --- | --- | --- |
-| `jp01worker1-ap-northeast-1a` | `g6.12xlarge` | `ens5` | `10.2.101.241` | 500 GB gp3 | none |
+| `jp01worker1-ap-northeast-1a` | `g6.12xlarge` | `enp39s0` | `10.2.101.241` | 500 GB gp3 | none |
 | `jp01worker2-ap-northeast-1a` | `g6.2xlarge` | `enp39s0` | `10.2.101.242` | 500 GB gp3 | none |
 
 Both nodes use AMI `ami-0f31cf9510e341030`, subnet `subnet-0f6e34349960f80b0` in `ap-northeast-1a`, and one shared security group created by this root.

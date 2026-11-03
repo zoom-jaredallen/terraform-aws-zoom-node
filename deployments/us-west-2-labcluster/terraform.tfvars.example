@@ -5,7 +5,7 @@ aws_retry_mode  = "standard"
 
 aws_region        = "us-west-2"
 availability_zone = "us-west-2a"
-ai_services_availability_zone = "us-west-2b"
+ai_services_availability_zone = "us-west-2d"
 registration_code = "REPLACE_WITH_FRESH_16_CHARACTER_CODE"
 
 # Optional overrides for deployments/aws-ami-catalog.json:

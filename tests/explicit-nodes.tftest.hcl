@@ -97,6 +97,13 @@ run "plan_explicit_nodes_with_external_dependencies" {
     error_message = "Each explicit node must retain its exact instance type."
   }
   assert {
+    condition = alltrue([
+      for node_key in ["jp01worker1-ap-northeast-1a", "jp01worker2-ap-northeast-1a"] :
+      strcontains(nonsensitive(base64decode(module.node.instances[node_key].user_data_base64)), "    enp39s0:")
+    ])
+    error_message = "All supported G6 instance types must render enp39s0 in cloud-init."
+  }
+  assert {
     condition     = module.node.instances["jp01worker1-ap-northeast-1a"].iam_instance_profile == "ZoomNodeS3Access"
     error_message = "An external IAM instance profile must be preserved."
   }

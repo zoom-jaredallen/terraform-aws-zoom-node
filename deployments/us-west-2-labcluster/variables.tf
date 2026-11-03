@@ -53,7 +53,7 @@ variable "availability_zone" {
 
 variable "ai_services_availability_zone" {
   type        = string
-  default     = "us-west-2b"
+  default     = "us-west-2d"
   description = "Availability Zone for the dedicated AI Services private subnet."
 }
 
