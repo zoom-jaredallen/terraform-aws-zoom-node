@@ -20,6 +20,7 @@ Customer-owned AMIs shared by maintained deployments are recorded by channel and
 Maintained roots currently include:
 
 - `eu-west-3-paris-labcluster`: the active Paris eight-node lab using region-local AMI copies and an independent `10.30.0.0/16` VPC;
+- `us-east-1-labcluster`: a temporary nine-node lab with three development-image Kubernetes masters and a separately placeable `g6.12xlarge` AI Services node;
 - `us-west-2-labcluster`: the active US West lab cluster;
 - `tokyo-ai-services-explicit-node`: explicit Tokyo AI Services nodes;
 - `govtech-ap-southeast-1-explicit-nodes`: explicit Singapore nodes; and

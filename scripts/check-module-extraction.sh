@@ -58,8 +58,8 @@ for ignored_attribute in private_ips private_ip_list private_ip_list_enabled; do
   }
 done
 
-rg -F -q 'network_interface_id = aws_instance.zoom_node[each.value.node_key].primary_network_interface_id' modules/node/main.tf || {
-  echo "EIP associations must wait for the owning EC2 instance to reach its running state." >&2
+rg -F -q 'network_interface_id = aws_network_interface.zoom_node[each.value.node_key].id' modules/node/main.tf || {
+  echo "EIP associations must target standalone ENIs before EC2 instances boot." >&2
   exit 1
 }
 

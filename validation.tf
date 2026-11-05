@@ -5,6 +5,20 @@ data "aws_servicequotas_service_quota" "ec2_elastic_ips" {
 
 data "aws_eips" "current" {}
 
+data "aws_eips" "managed" {
+  count = local.required_elastic_ips > 0 ? 1 : 0
+
+  filter {
+    name   = "tag:ManagedBy"
+    values = ["Terraform"]
+  }
+
+  filter {
+    name   = "tag:Name"
+    values = local.desired_elastic_ip_names
+  }
+}
+
 data "aws_ec2_instance_type_offerings" "selected" {
   for_each = local.selected_instance_type_availability_zones
 
@@ -114,23 +128,25 @@ locals {
   advanced_ip_range_validation_errors = [
     for group_key, group in var.node_groups :
     "node_groups.${group_key} static IP range exceeds the selected subnet."
-    if group.private_ip_start_offset + ((group.count - 1) * max(10, group.private_ips_per_node)) + group.private_ips_per_node >= pow(2, 32 - try(tonumber(split("/", group.subnet_tier == "private" ? local.configured_private_subnet_cidrs[group.subnet_index != null ? group.subnet_index : 0] : local.configured_public_subnet_cidrs[group.subnet_index != null ? group.subnet_index : 0])[1]), 32)) - 1
+    if group.count > 0 && group.private_ip_start_offset + ((group.count - 1) * max(10, group.private_ips_per_node)) + group.private_ips_per_node >= pow(2, 32 - try(tonumber(split("/", group.subnet_tier == "private" ? local.configured_private_subnet_cidrs[group.subnet_index != null ? group.subnet_index : 0] : local.configured_public_subnet_cidrs[group.subnet_index != null ? group.subnet_index : 0])[1]), 32)) - 1
   ]
 
   advanced_node_group_validation_errors = flatten([
     for group_key, group in var.node_groups : concat(
-      group.count <= 0 ? ["node_groups.${group_key} count must be greater than zero."] : [],
-      group.root_volume_gb <= 0 ? ["node_groups.${group_key} root_volume_gb must be greater than zero."] : [],
-      group.private_ips_per_node <= 0 ? ["node_groups.${group_key} private_ips_per_node must be greater than zero."] : [],
-      group.elastic_ips_per_node > group.private_ips_per_node ? ["node_groups.${group_key} elastic_ips_per_node cannot exceed private_ips_per_node."] : [],
-      group.metadata_http_put_response_hop_limit != null && (group.metadata_http_put_response_hop_limit < 1 || group.metadata_http_put_response_hop_limit > 64) ? ["node_groups.${group_key} metadata_http_put_response_hop_limit must be between 1 and 64."] : [],
-      !contains(["public", "private"], group.subnet_tier) ? ["node_groups.${group_key} subnet_tier must be public or private."] : [],
-      group.subnet_index != null && (group.subnet_index < 0 || floor(group.subnet_index) != group.subnet_index) ? ["node_groups.${group_key} subnet_index must be a non-negative integer."] : [],
-      group.purchase_option != null && !contains(["on_demand", "spot"], group.purchase_option) ? ["node_groups.${group_key} purchase_option must be on_demand or spot."] : [],
-      group.instance_create_timeout != null && (trimspace(group.instance_create_timeout) == "" || !can(regex("^([0-9]+h)?([0-9]+m)?([0-9]+s)?$", group.instance_create_timeout))) ? ["node_groups.${group_key}.instance_create_timeout must be a Terraform duration such as 5m or 1h30m."] : [],
-      group.image_channel != null && !contains(["prod", "dev"], group.image_channel) ? ["node_groups.${group_key} image_channel must be prod or dev."] : [],
-      !contains(local.supported_advanced_security_profiles, group.security_profile) ? ["node_groups.${group_key} security_profile is not supported."] : [],
-      group.image_id != null && trimspace(group.image_id) != "" && !can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(group.image_id))) ? ["node_groups.${group_key} image_id is not a valid AMI ID."] : []
+      group.count < 0 || floor(group.count) != group.count ? ["node_groups.${group_key} count must be a non-negative integer."] : [],
+      group.count > 0 ? concat(
+        group.root_volume_gb <= 0 ? ["node_groups.${group_key} root_volume_gb must be greater than zero."] : [],
+        group.private_ips_per_node <= 0 ? ["node_groups.${group_key} private_ips_per_node must be greater than zero."] : [],
+        group.elastic_ips_per_node > group.private_ips_per_node ? ["node_groups.${group_key} elastic_ips_per_node cannot exceed private_ips_per_node."] : [],
+        group.metadata_http_put_response_hop_limit != null && (group.metadata_http_put_response_hop_limit < 1 || group.metadata_http_put_response_hop_limit > 64) ? ["node_groups.${group_key} metadata_http_put_response_hop_limit must be between 1 and 64."] : [],
+        !contains(["public", "private"], group.subnet_tier) ? ["node_groups.${group_key} subnet_tier must be public or private."] : [],
+        group.subnet_index != null && (group.subnet_index < 0 || floor(group.subnet_index) != group.subnet_index) ? ["node_groups.${group_key} subnet_index must be a non-negative integer."] : [],
+        group.purchase_option != null && !contains(["on_demand", "spot"], group.purchase_option) ? ["node_groups.${group_key} purchase_option must be on_demand or spot."] : [],
+        group.instance_create_timeout != null && (trimspace(group.instance_create_timeout) == "" || !can(regex("^([0-9]+h)?([0-9]+m)?([0-9]+s)?$", group.instance_create_timeout))) ? ["node_groups.${group_key}.instance_create_timeout must be a Terraform duration such as 5m or 1h30m."] : [],
+        group.image_channel != null && !contains(["prod", "dev"], group.image_channel) ? ["node_groups.${group_key} image_channel must be prod or dev."] : [],
+        !contains(local.supported_advanced_security_profiles, group.security_profile) ? ["node_groups.${group_key} security_profile is not supported."] : [],
+        group.image_id != null && trimspace(group.image_id) != "" && !can(regex("^ami-([0-9a-f]{8}|[0-9a-f]{17})$", trimspace(group.image_id))) ? ["node_groups.${group_key} image_id is not a valid AMI ID."] : []
+      ) : []
     )
   ])
 
@@ -211,8 +227,14 @@ locals {
   required_elastic_ips = sum(concat([0], [
     for _, node in local.node_records : node.elastic_ips_per_node
   ])) + (var.aws.create_nat_gateway ? 1 : 0)
-  current_elastic_ips = length(data.aws_eips.current.public_ips)
-  eip_quota           = floor(data.aws_servicequotas_service_quota.ec2_elastic_ips.value)
+  desired_elastic_ip_names = concat(
+    [for _, record in local.node_eip_records : "${record.node_name}-eip-${record.eip_index}"],
+    var.aws.create_nat_gateway ? [var.environment_name == "" ? "zoom-node-nat-eip" : "${var.environment_name}-zoom-node-nat-eip"] : []
+  )
+  current_elastic_ips      = length(data.aws_eips.current.public_ips)
+  managed_elastic_ips      = local.required_elastic_ips > 0 ? length(data.aws_eips.managed[0].public_ips) : 0
+  required_new_elastic_ips = max(0, local.required_elastic_ips - local.managed_elastic_ips)
+  eip_quota                = floor(data.aws_servicequotas_service_quota.ec2_elastic_ips.value)
 
   instance_type_validation_errors = [
     for pair_key, offerings in data.aws_ec2_instance_type_offerings.selected :
@@ -405,8 +427,8 @@ locals {
     local.network_interface_validation_errors,
     local.instance_type_validation_errors,
     local.image_lookup_validation_errors,
-    local.required_elastic_ips > 0 && local.current_elastic_ips + local.required_elastic_ips > local.eip_quota ? [
-      "Elastic IP quota is insufficient: current usage ${local.current_elastic_ips}, required new Elastic IPs ${local.required_elastic_ips}, quota ${local.eip_quota}."
+    local.required_new_elastic_ips > 0 && local.current_elastic_ips + local.required_new_elastic_ips > local.eip_quota ? [
+      "Elastic IP quota is insufficient: current usage ${local.current_elastic_ips}, required new Elastic IPs ${local.required_new_elastic_ips}, quota ${local.eip_quota}."
     ] : []
   )
 }

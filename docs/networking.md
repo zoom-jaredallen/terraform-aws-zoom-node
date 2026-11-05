@@ -17,6 +17,14 @@ For a new network, configure `public_subnet_cidrs` and `private_subnet_cidrs`, o
 
 Private node groups currently require `network_mode = "create_new"`. Private groups that need outbound internet access can use `create_nat_gateway = true`. The module creates one NAT Gateway in the first public subnet and routes managed private subnets through it. This is not a multi-AZ high-availability NAT design.
 
+## Bootstrap readiness
+
+The module associates public Elastic IPs with standalone ENIs before starting EC2 instances. This ensures public nodes can reach Zoom registration services from their first boot rather than racing a post-launch EIP association.
+
+After managed subnets, gateways, routes, and route-table associations converge, the module waits for `aws.network_stabilization_delay` before creating any node. The default is `90s`, allowing AWS network data-plane changes to propagate before the Zoom Node appliance begins its limited registration retry sequence. Private nodes continue to use NAT Gateway egress and do not require individual EIPs.
+
+Use `0s` for an established existing VPC only when its egress path is already operational. Changing the network topology replaces the readiness barrier and reapplies the delay; ordinary instance updates do not repeatedly wait.
+
 ## Deterministic private IPs
 
 Standard workloads reserve blocks using catalog start offsets. `private_ips_per_eni` is the total number of addresses on a node ENI, including its primary address. The module checks range boundaries and collisions during planning.

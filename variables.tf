@@ -279,6 +279,7 @@ variable "aws" {
     public_subnet_cidrs                                              = optional(list(string), [])
     private_subnet_cidrs                                             = optional(list(string), [])
     create_nat_gateway                                               = optional(bool, false)
+    network_stabilization_delay                                      = optional(string, "90s")
     availability_zones                                               = optional(list(string), [])
     existing_vpc_id                                                  = optional(string, "")
     existing_subnet_ids                                              = optional(list(string), [])
@@ -318,6 +319,11 @@ variable "aws" {
     })), {})
   })
   default = {}
+
+  validation {
+    condition     = can(regex("^[0-9]+(ms|s|m)$", var.aws.network_stabilization_delay))
+    error_message = "aws.network_stabilization_delay must be a Terraform duration using ms, s, or m, such as 90s."
+  }
 }
 
 variable "tags" {

@@ -222,7 +222,7 @@ locals {
 
   advanced_iam_profile_keys = toset([
     for profile_key in concat(
-      [for _, group in var.node_groups : group.iam_profile_key],
+      [for _, group in var.node_groups : group.iam_profile_key if group.count > 0],
       [for _, node in var.explicit_nodes : node.iam_profile_key if node.iam_profile_key != null]
     ) : profile_key
   ])
@@ -248,7 +248,7 @@ locals {
 
   advanced_security_profiles = toset([
     for profile in concat(
-      [for _, group in var.node_groups : group.security_profile],
+      [for _, group in var.node_groups : group.security_profile if group.count > 0],
       [for _, node in var.explicit_nodes : node.security_profile if node.security_profile != null]
     ) : profile
   ])

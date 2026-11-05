@@ -15,8 +15,12 @@ required_runs=(
   plan_create_new_dual_az
   plan_use_existing_network
   plan_private_nodes_with_nat_gateway
+  plan_network_stabilization_barrier
+  plan_zero_count_node_group_disabled
   plan_global_spot_workloads
   plan_control_plane_virtual_ip_on_master_eni
+  reject_eip_quota_when_unmanaged_usage_exhausts_quota
+  plan_eip_quota_reuses_managed_allocations
   reject_unsupported_control_plane_virtual_ip_mode
   reject_unknown_control_plane_virtual_ip_owner
   reject_non_master_control_plane_virtual_ip_owner
@@ -72,6 +76,16 @@ for run_name in "${required_runs[@]}"; do
     missing_runs+=("$run_name")
   fi
 done
+
+if ! rg --quiet 'network_interface_id[[:space:]]*=[[:space:]]*aws_network_interface\.zoom_node\[each\.value\.node_key\]\.id' modules/node/main.tf; then
+  echo "EIP associations must target standalone ENIs before EC2 instances start." >&2
+  exit 1
+fi
+
+if ! rg --quiet 'depends_on[[:space:]]*=[[:space:]]*\[aws_cloudwatch_log_group\.zoom_node, aws_eip_association\.zoom_node\]' modules/node/main.tf; then
+  echo "EC2 instances must wait for EIP associations before booting." >&2
+  exit 1
+fi
 
 if ((${#missing_runs[@]} > 0)); then
   printf 'Missing required Terraform contract runs:\n' >&2

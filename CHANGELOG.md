@@ -12,6 +12,9 @@ All notable changes to this module are documented here. Releases follow Semantic
 ### Fixed
 
 - Render `enp39s0` for supported AWS G6 instance types after verification on a `g6.12xlarge` Zoom Node appliance.
+- Count only missing environment-owned Elastic IPs as new quota demand during updates, preventing existing managed EIPs from blocking unrelated changes.
+- Associate Elastic IPs with standalone ENIs before EC2 boot and wait for network stabilization before starting nodes, preventing cloud-init registration from racing public and NAT egress readiness.
+- Treat an advanced `node_groups` entry with `count = 0` as disabled so environments can scale a group to zero without removing its configuration block.
 
 ## [0.4.1] - 2026-11-03
 

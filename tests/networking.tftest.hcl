@@ -51,6 +51,7 @@ mock_provider "aws" {
 }
 
 mock_provider "random" {}
+mock_provider "time" {}
 
 variables {
   environment_name  = "network"
@@ -256,6 +257,69 @@ run "plan_private_nodes_with_nat_gateway" {
   assert {
     condition     = module.network.test_contract.private_default_route_cidr == "0.0.0.0/0"
     error_message = "The private route table must send default IPv4 traffic through the managed NAT Gateway."
+  }
+}
+
+run "plan_network_stabilization_barrier" {
+  command = plan
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    aws = {
+      availability_zones          = ["us-west-2a"]
+      network_stabilization_delay = "90s"
+    }
+  }
+
+  assert {
+    condition     = time_sleep.network_ready.create_duration == "90s"
+    error_message = "Node creation must wait for the configured network stabilization delay."
+  }
+}
+
+run "plan_zero_count_node_group_disabled" {
+  command = plan
+
+  variables {
+    workloads = {
+      meeting_survivability = {
+        enabled    = true
+        node_count = 1
+      }
+    }
+    node_groups = {
+      disabled_gpu = {
+        count                   = 0
+        role                    = "ai_services"
+        hostname_prefix         = "ai"
+        instance_type           = "g6.12xlarge"
+        root_volume_gb          = 500
+        private_ips_per_node    = 1
+        private_ip_start_offset = 110
+        subnet_tier             = "private"
+        subnet_index            = 1
+        security_profile        = "kubernetes_worker"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+    aws = {
+      availability_zones = ["us-west-2a"]
+    }
+  }
+
+  assert {
+    condition     = !contains(keys(local.node_records), "disabled_gpu-01")
+    error_message = "A zero-count advanced node group must be treated as disabled."
+  }
+
+  assert {
+    condition     = local.private_subnet_count == 0
+    error_message = "A zero-count advanced node group must not require a private subnet."
   }
 }
 
@@ -581,4 +645,80 @@ run "reject_static_ip_subnet_exhaustion" {
   }
 
   expect_failures = [terraform_data.validation]
+}
+
+run "reject_eip_quota_when_unmanaged_usage_exhausts_quota" {
+  command = plan
+
+  override_data {
+    target = data.aws_servicequotas_service_quota.ec2_elastic_ips
+    values = { value = 5 }
+  }
+
+  override_data {
+    target = data.aws_eips.current
+    values = { public_ips = ["192.0.2.1", "192.0.2.2", "192.0.2.3", "192.0.2.4", "192.0.2.5"] }
+  }
+
+  override_data {
+    target = data.aws_eips.managed[0]
+    values = { public_ips = [] }
+  }
+
+  variables {
+    node_groups = {
+      quota = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "quota"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        elastic_ips_per_node    = 1
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validation]
+}
+
+run "plan_eip_quota_reuses_managed_allocations" {
+  command = plan
+
+  override_data {
+    target = data.aws_servicequotas_service_quota.ec2_elastic_ips
+    values = { value = 5 }
+  }
+
+  override_data {
+    target = data.aws_eips.current
+    values = { public_ips = ["192.0.2.1", "192.0.2.2", "192.0.2.3", "192.0.2.4", "192.0.2.5"] }
+  }
+
+  override_data {
+    target = data.aws_eips.managed[0]
+    values = { public_ips = ["192.0.2.1"] }
+  }
+
+  variables {
+    node_groups = {
+      quota = {
+        count                   = 1
+        role                    = "kubernetes_master"
+        hostname_prefix         = "quota"
+        instance_type           = "t3.large"
+        root_volume_gb          = 500
+        elastic_ips_per_node    = 1
+        private_ip_start_offset = 10
+        subnet_tier             = "public"
+        source_dest_check       = false
+        security_profile        = "kubernetes_master"
+        iam_profile_key         = "kubernetes"
+      }
+    }
+  }
 }

@@ -19,6 +19,19 @@ module "network" {
   common_tags                = local.common_tags
 }
 
+resource "time_sleep" "network_ready" {
+  create_duration = var.aws.network_stabilization_delay
+
+  triggers = {
+    vpc_id             = module.network.vpc_id
+    public_subnet_ids  = join(",", module.network.public_subnet_ids)
+    private_subnet_ids = join(",", module.network.private_subnet_ids)
+    nat_gateway_id     = module.network.nat_gateway_id == null ? "" : module.network.nat_gateway_id
+  }
+
+  depends_on = [module.network]
+}
+
 module "storage_access" {
   source = "./modules/storage-access"
 
@@ -62,5 +75,5 @@ module "node" {
   environment_name              = var.environment_name
   common_tags                   = local.common_tags
 
-  depends_on = [module.network, module.storage_access]
+  depends_on = [time_sleep.network_ready, module.storage_access]
 }
