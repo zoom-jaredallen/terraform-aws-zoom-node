@@ -29,6 +29,15 @@ capacity_check="/path/to/terraform-aws-zoom-node/scripts/check-ec2-capacity.sh"
 "$capacity_check" --terraform-plan tfplan --minimum-score medium
 ```
 
+To combine the preflight with apply-time diagnostics:
+
+```bash
+apply_with_diagnostics="/path/to/terraform-aws-zoom-node/scripts/apply-with-diagnostics.sh"
+"$apply_with_diagnostics" --terraform-plan tfplan --minimum-score medium
+```
+
+The guarded apply stops before provisioning when supportability is below the requested minimum. Use `--allow-low-capacity` only after accepting that AWS may reject the launch, or `--skip-capacity-check` when Capacity Manager is unavailable and runtime diagnostics are still useful. The wrapper recognizes `InsufficientInstanceCapacity`, subnet address exhaustion, EC2 and vCPU quota limits, Spot limits, and unsupported configurations. It preserves Terraform's exit status and does not automatically move resources or modify the saved plan.
+
 Run the script from a local checkout of this module. It requires AWS CLI v2.39.1 or newer, `jq`, EC2 Capacity Manager, and AWS Support Unified Operations. See [Optional capacity preflight](prerequisites.md#optional-capacity-preflight) for the complete prerequisite list. `high`, `medium`, and `low` are supportability signals, not reservations or guarantees.
 
 Capacity Manager can be enabled in only one Region per account. Query the Region selected for the account, even when the Terraform plan targets another Region:
@@ -44,6 +53,8 @@ aws ec2 enable-capacity-manager --region us-west-2
 ```
 
 Then pass that Region to the preflight script with `--capacity-manager-region us-west-2`. Initial historical-data ingestion can take several hours, but supportability scoring is still a point-in-time advisory and does not reserve capacity.
+
+After any failed apply, run a fresh plan before retrying. Terraform is not transactional, so resources completed before the failure, such as ENIs or CloudWatch log groups, can remain managed in state. If AWS created a resource but Terraform did not record it because the process was interrupted, reconcile it with `terraform import` or remove it deliberately before another apply.
 
 ## Elastic IP quota appears incorrect
 

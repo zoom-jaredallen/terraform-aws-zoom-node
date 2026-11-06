@@ -79,7 +79,7 @@ module "zoom_node" {
       iam_profile_key                      = "kubernetes"
     }
     ai_services = {
-      count                                = 0
+      count                                = 1
       role                                 = "ai_services"
       hostname_prefix                      = "ai"
       instance_type                        = var.ai_services_instance_type

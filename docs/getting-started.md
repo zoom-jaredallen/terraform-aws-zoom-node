@@ -69,11 +69,11 @@ terraform init
 terraform fmt -check
 terraform validate
 terraform plan -out=tfplan
-# Optional: useful for Spot, GPU, large, or AZ-constrained requests.
-../../scripts/check-ec2-capacity.sh --terraform-plan tfplan --minimum-score medium
+# Optional guarded apply: useful for Spot, GPU, large, or AZ-constrained requests.
+../../scripts/apply-with-diagnostics.sh --terraform-plan tfplan --minimum-score medium
 ```
 
-The capacity command is optional; skip it for routine plans or when the account does not meet the [optional capacity-preflight prerequisites](prerequisites.md#optional-capacity-preflight). It is intended for Spot, GPU-backed, unusually large, multi-node, or single-AZ requests where current physical capacity is a concern. External caller roots must invoke the script from a local checkout of this module. It scores point-in-time supportability but does not reserve capacity or guarantee launch success.
+The guarded command and capacity check are optional; use plain `terraform apply tfplan` for routine plans or `--skip-capacity-check` when you want the wrapper's runtime diagnostics without Capacity Manager. The preflight is intended for Spot, GPU-backed, unusually large, multi-node, or single-AZ requests where current physical capacity is a concern. External caller roots must invoke the script from a local checkout of this module. It scores point-in-time supportability but does not reserve capacity or guarantee launch success. A below-threshold score stops the apply unless `--allow-low-capacity` is supplied explicitly.
 
 Review the saved plan for:
 
@@ -86,6 +86,7 @@ Review the saved plan for:
 ## 5. Apply and verify
 
 ```bash
+# If the guarded apply was not used in the previous step:
 terraform apply tfplan
 terraform output node_fqdns
 terraform output node_private_ips

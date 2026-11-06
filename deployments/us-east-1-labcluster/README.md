@@ -58,8 +58,12 @@ cp terraform.tfvars.example local.auto.tfvars
 # Edit local.auto.tfvars and replace registration_code.
 terraform plan -out=tfplan
 # Review promptly, then apply while the registration code is still valid.
-terraform apply tfplan
+../../scripts/apply-with-diagnostics.sh \
+  --terraform-plan tfplan \
+  --capacity-manager-region us-west-2
 ```
+
+The guarded apply blocks a below-threshold capacity score before creating resources and explains common AWS launch failures. Use `--allow-low-capacity` to attempt the reviewed plan despite a low score, or `--skip-capacity-check` to retain runtime diagnostics without Capacity Manager. Neither option changes placement automatically.
 
 Never apply `capacity.tfplan`; it contains a placeholder registration code. If the real registration code expires before apply, obtain a new code and create a new final plan rather than applying the old saved plan.
 

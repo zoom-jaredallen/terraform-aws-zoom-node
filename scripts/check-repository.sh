@@ -14,6 +14,7 @@ terraform validate
 ./scripts/check-module-extraction.sh
 ./scripts/test-capture-deployment-baseline.sh
 ./scripts/test-check-ec2-capacity.sh
+./scripts/test-apply-with-diagnostics.sh
 ./scripts/test-check-tracked-artifacts.sh
 terraform test
 

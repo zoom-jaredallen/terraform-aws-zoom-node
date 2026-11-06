@@ -287,15 +287,22 @@ The Capacity Manager preflight is optional. Terraform planning and deployment do
 
 EC2 instance creation has a `10m` default timeout. Override `aws.instance_create_timeout`, an advanced group or explicit node's `instance_create_timeout`, or `aws.node_instance_create_timeouts[stable-node-key]`. Stable-node overrides take highest precedence. Executable roots own provider retries; the maintained examples default to `max_retries = 5` and `retry_mode = "standard"`. Callers can instead use `AWS_MAX_ATTEMPTS` and `AWS_RETRY_MODE` where editing the provider block is impractical.
 
-To request an optional point-in-time capacity score, create a saved plan and pass it to the preflight script:
+To guard an apply with the optional point-in-time capacity score, create a saved plan and pass it to the diagnostic wrapper:
 
 ```bash
 terraform plan -out=tfplan
-scripts/check-ec2-capacity.sh \
+scripts/apply-with-diagnostics.sh \
   --terraform-plan tfplan \
   --minimum-score medium
-terraform apply tfplan
 rm -f tfplan
+```
+
+The wrapper stops before apply when supportability is below the requested minimum. Use `--allow-low-capacity` to attempt the reviewed plan despite a low score, or `--skip-capacity-check` when the account does not use Capacity Manager. These options are explicit because capacity scores are advisory and Capacity Manager remains optional. The wrapper also recognizes common EC2 capacity, quota, subnet-address, Spot-limit, and unsupported-configuration errors after apply, preserves Terraform's original output and exit status, and prints actionable recovery guidance. It never changes an Availability Zone, instance type, subnet, or saved plan automatically.
+
+The underlying preflight remains available independently:
+
+```bash
+scripts/check-ec2-capacity.sh --terraform-plan tfplan --minimum-score medium
 ```
 
 The script reads the nonsensitive `capacity_preflight_requests` output from the saved plan, groups requests by market and node count, translates account-specific AZ names to stable AZ IDs, and reports `high`, `medium`, or `low`. Use `--capacity-manager-region` when Capacity Manager is enabled outside the deployment Region or the plan targets multiple Regions. Manual mode is also available:
@@ -312,6 +319,8 @@ scripts/check-ec2-capacity.sh \
 The optional check requires AWS CLI v2.39.1 or newer, `jq`, account-level EC2 Capacity Manager enabled in one Region, and AWS Support Unified Operations for real-time supportability. Minimum IAM actions are `sts:GetCallerIdentity`, `ec2:DescribeAvailabilityZones`, `ec2:GetCapacityManagerAttributes`, and `ec2:GetCapacityManagerSupportabilityScores`. Scores are guidance, not reservations or launch guarantees. Proceed on `high`; for `medium` or `low`, add compatible instance types or AZs, reduce the request, or retry later. Do not publish score responses. See [Prerequisites](docs/prerequisites.md#optional-capacity-preflight) for setup.
 
 Saved Terraform plans can contain the registration code, generated password, and rendered cloud-init even though the extracted capacity manifest is nonsensitive. Store plans with restricted permissions and delete them after review.
+
+Terraform applies are not transactional. A failed EC2 launch can leave successfully created supporting resources in state, such as an ENI or CloudWatch log group. Generate and review a fresh plan after any failed apply.
 
 Reserved Instances and Savings Plans are billing commitments applied to matching On-Demand usage, so they are not module deployment options. Capacity Reservations and Dedicated Hosts have separate placement and lifecycle requirements and are outside this MVP.
 
